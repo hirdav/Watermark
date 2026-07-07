@@ -1,0 +1,64 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Plan {
+  FREE
+  PRO
+  STUDIO
+}
+
+model User {
+  id                 String        @id @default(cuid())
+  email              String        @unique
+  passwordHash       String
+  name               String?
+  plan               Plan          @default(FREE)
+  razorpayCustomerId String?
+  shoots             Shoot[]
+  subscription       Subscription?
+  createdAt          DateTime      @default(now())
+}
+
+model Subscription {
+  id                     String    @id @default(cuid())
+  userId                 String    @unique
+  user                   User      @relation(fields: [userId], references: [id])
+  razorpaySubscriptionId String    @unique
+  status                 String
+  plan                   Plan
+  currentPeriodEnd       DateTime?
+  updatedAt              DateTime  @updatedAt
+}
+
+model Shoot {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  title         String
+  shareToken    String   @unique @default(cuid())
+  watermarkText String   @default("PROOF")
+  images        Image[]
+  createdAt     DateTime @default(now())
+}
+
+model Image {
+  id              String   @id @default(cuid())
+  shootId         String
+  shoot           Shoot    @relation(fields: [shootId], references: [id], onDelete: Cascade)
+  filename        String
+  originalPath    String
+  watermarkedPath String
+  selected        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+}
