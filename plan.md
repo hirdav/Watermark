@@ -181,4 +181,16 @@ Two production bugs found and fixed in the process:
 
 Still to verify manually when convenient: a **logo (PNG) watermark** in prod on the Pro account — the engine path is covered by local tests but hasn't been clicked through in production. Note: one orphaned unstamped image exists in prod test data (shoot "Pro Watermark Test", first upload, pre-font-fix) — harmless test data.
 
+## 2026-07-08 (evening) — Guided wizard UX, templates, tiled + custom placement
+
+Complete UX rebuild of the shoot page (commit `2b7eba7`), deployed and verified in prod via the Railway-generated domain:
+
+- **Guided 4-step wizard** replaces the all-options-at-once page: ① choose watermark (text / PNG logo / saved template) → ② customize (size, position, opacity, rotation, margin) with debounced live preview → ③ drag-and-drop batch upload → ④ results grid with per-image download + ZIP. Progressive disclosure; steps navigable via a stepper. FREE plan gets a locked step ① with a "continue with default" path.
+- **Watermark templates**: new `WatermarkTemplate` model + `GET/POST /api/watermark-templates`, `DELETE /api/watermark-templates/[id]`. Save current settings as a named template (logo file copied to `{userId}/templates/{id}.png`); pick a template in step ① to prefill everything. Plan-gated like custom watermarks (GET open, POST 403 on FREE — verified).
+- **Placement modes**: `watermarkMode` SINGLE/TILED + `CUSTOM` position with `watermarkPosXPct/YPct`. Tiled = sharp `tile: true` compositing with margin-controlled spacing (presets in UI: "Diagonal pattern" = tiled −30°, "Repeat grid" = tiled 0°); CUSTOM = click-to-place on the live preview. Plus a stamp-fit clamp (`fitWithin`) so oversized/rotated stamps can't exceed base-image dims.
+- Migration `20260708120000_add_watermark_mode_and_templates` applied cleanly on Railway boot.
+- **Prod verification (all pass)**: tiled text render covers all four quadrants; custom position lands only where placed; logo config via file upload; logo template created from shoot logo (`hasLogo: true`); tiled-logo preview via `templateId`; template delete; FREE gating. (Initial "failure" was a test-harness bug: sharp `.stats()` ignores a preceding `.extract()` — measure quadrants via raw pixel buffers instead.)
+
+**⚠ Open issue — custom domain DNS is down**: `watermark.edantra.online` now returns NXDOMAIN from public resolvers (Cloudflare + Google); the `watermark` CNAME record has disappeared from the Hostinger zone (nameservers still dns-parking.com, apex still resolves). The app is healthy on `https://watermark-app-production-2953.up.railway.app`. Fix: in Hostinger DNS Zone Editor for `edantra.online`, re-add the CNAME `watermark` → the target shown in Railway dashboard → watermark-app service → Settings → Networking (the generated `*.up.railway.app` value). Until then, Razorpay webhooks (registered at the custom domain) will also fail to deliver.
+
 ---
