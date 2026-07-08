@@ -51,7 +51,10 @@ export interface ApplyWatermarkResult {
 const TRANSPARENT = { r: 0, g: 0, b: 0, alpha: 0 };
 
 function buildTextStampSVG(stampWidth: number, text: string, opacity: number): Buffer {
-  const fontSize = Math.max(Math.round(stampWidth * 0.18), 12);
+  // Cap the font size so the whole string fits inside the stamp width
+  // (~0.65em average glyph width for a bold sans face).
+  const fitToWidth = Math.floor(stampWidth / (Math.max(text.length, 1) * 0.65));
+  const fontSize = Math.max(Math.min(Math.round(stampWidth * 0.18), fitToWidth), 12);
   const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const paddingX = Math.round(fontSize * 0.4);
   const width = stampWidth;

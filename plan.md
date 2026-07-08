@@ -164,9 +164,21 @@ Implemented, not yet committed or deployed:
 - **Not yet verified**: clicking through the actual browser flow (login → configure watermark → upload → client favorites → download-selected). Local `.env` has a stale SQLite-style `DATABASE_URL` left over from before the Postgres migration, and there's no local Postgres/docker in this environment — so `npm run dev` can't be exercised end-to-end locally right now. Needs either a local Postgres pointed at, or a manual click-through after deploying.
 
 ### Next steps
-1. Get a local Postgres reachable (or accept testing only after deploy) and click through the full flow once.
-2. Commit and deploy; confirm the migration applies cleanly on Railway boot.
-3. Manually verify in prod: set a logo watermark, upload a batch, favorite a few in the public gallery, download-selected, confirm it's clean/original quality.
+1. ~~Get a local Postgres reachable (or accept testing only after deploy) and click through the full flow once.~~ Done via prod (2026-07-08, see below).
+2. ~~Commit and deploy; confirm the migration applies cleanly on Railway boot.~~ Done — `20260708100514_add_watermark_config` applied cleanly on boot.
+3. Partially done — text watermark verified end-to-end in prod on a real Pro account; **logo watermark not yet exercised in prod** (engine verified locally only).
 4. Phase 2 (later): video watermarking via ffmpeg; Google Drive export via OAuth.
+
+## 2026-07-08 (later) — Pivot deployed and verified in prod
+
+Deployed the watermark-pivot commit; migration applied automatically on Railway boot. Verified in production:
+- **FREE tier**: signup → shoot → upload → default centered "PROOF" stamp renders in the public gallery; favorite-toggle works; `download-selected` returns a zip containing the **clean original** (byte-uniform check confirmed no stamp). `watermark-config`/`watermark-preview` correctly reject FREE users (400/403).
+- **PRO tier** (real Razorpay test checkout by the owner on `test@testing.com`; webhook flipped the plan): custom text config saves, live preview renders, uploads stamp per config (position/size/opacity/margin all honored).
+
+Two production bugs found and fixed in the process:
+- **No fonts in the Railway runtime image** — SVG text watermarks rendered as tofu boxes (□□□□), and the very first Pro upload produced a *completely unstamped* file (transient empty pango layout — the no-fonts code path is flaky, not just ugly). Fix: `railpack.json` with `deploy.aptPackages: ["fonts-dejavu-core", "fontconfig"]` + DejaVu Sans named first in the SVG font stack.
+- **Long watermark text clipped** — the stamp SVG was exactly `stampWidth` wide while the text at `0.18 × stampWidth` overflowed ("HIRAK STUDIO" → "HIRAK ST"). Fix: cap font size to fit the string width (`stampWidth / (len × 0.65)`).
+
+Still to verify manually when convenient: a **logo (PNG) watermark** in prod on the Pro account — the engine path is covered by local tests but hasn't been clicked through in production. Note: one orphaned unstamped image exists in prod test data (shoot "Pro Watermark Test", first upload, pre-font-fix) — harmless test data.
 
 ---
