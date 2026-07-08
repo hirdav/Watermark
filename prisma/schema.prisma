@@ -33,6 +33,12 @@ enum WatermarkPosition {
   BOTTOM_LEFT
   BOTTOM_CENTER
   BOTTOM_RIGHT
+  CUSTOM
+}
+
+enum WatermarkMode {
+  SINGLE
+  TILED
 }
 
 model User {
@@ -44,6 +50,7 @@ model User {
   razorpayCustomerId String?
   shoots             Shoot[]
   subscription       Subscription?
+  watermarkTemplates WatermarkTemplate[]
   createdAt          DateTime      @default(now())
 }
 
@@ -67,13 +74,35 @@ model Shoot {
   watermarkType      WatermarkType     @default(TEXT)
   watermarkText      String            @default("PROOF")
   watermarkLogoPath  String?
+  watermarkMode      WatermarkMode     @default(SINGLE)
   watermarkPosition  WatermarkPosition @default(CENTER)
+  watermarkPosXPct   Float             @default(50)
+  watermarkPosYPct   Float             @default(50)
   watermarkSizePct   Float             @default(40)
   watermarkOpacity   Float             @default(0.3)
   watermarkRotation  Float             @default(-30)
   watermarkMarginPct Float             @default(4)
   images             Image[]
   createdAt          DateTime          @default(now())
+}
+
+model WatermarkTemplate {
+  id        String            @id @default(cuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  type      WatermarkType     @default(TEXT)
+  text      String            @default("PROOF")
+  logoPath  String?
+  mode      WatermarkMode     @default(SINGLE)
+  position  WatermarkPosition @default(CENTER)
+  posXPct   Float             @default(50)
+  posYPct   Float             @default(50)
+  sizePct   Float             @default(40)
+  opacity   Float             @default(0.3)
+  rotation  Float             @default(-30)
+  marginPct Float             @default(4)
+  createdAt DateTime          @default(now())
 }
 
 model Image {

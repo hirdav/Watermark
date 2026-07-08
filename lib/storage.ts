@@ -15,6 +15,10 @@ export function logoPathFor(userId: string, shootId: string): string {
   return join(userId, shootId, "watermark-logo.png");
 }
 
+export function templateLogoPathFor(userId: string, templateId: string): string {
+  return join(userId, "templates", `${templateId}.png`);
+}
+
 export async function saveFile(relativePath: string, data: Buffer): Promise<void> {
   const fullPath = join(STORAGE_DIR, relativePath);
   await mkdir(dirname(fullPath), { recursive: true });

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { PLANS } from "@/lib/plans";
 import { logoPathFor, saveFile } from "@/lib/storage";
 import { parseWatermarkFields } from "@/lib/watermark-form";
+import { resolveLogoBuffer } from "@/lib/watermark-logo";
 
 function respond(req: Request, shootId: string, params: Record<string, string>) {
   const wantsHtml = req.headers.get("accept")?.includes("text/html");
@@ -36,16 +37,22 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const form = await req.formData();
   const fields = parseWatermarkFields(form);
 
-  if (fields.type === "logo" && !fields.logoFile && !shoot.watermarkLogoPath) {
-    return respond(req, shootId, { error: "Upload a transparent PNG logo first." });
-  }
-
   let watermarkLogoPath = shoot.watermarkLogoPath;
-  if (fields.logoFile) {
-    const buffer = Buffer.from(await fields.logoFile.arrayBuffer());
-    const rel = logoPathFor(user.id, shoot.id);
-    await saveFile(rel, buffer);
-    watermarkLogoPath = rel;
+  if (fields.type === "logo") {
+    // A new file or a template logo replaces the shoot's saved logo; otherwise keep it.
+    const logo = await resolveLogoBuffer({
+      userId: user.id,
+      logoFile: fields.logoFile,
+      templateId: fields.templateId,
+      shootLogoPath: null,
+    });
+    if (logo) {
+      const rel = logoPathFor(user.id, shoot.id);
+      await saveFile(rel, logo);
+      watermarkLogoPath = rel;
+    } else if (!shoot.watermarkLogoPath) {
+      return respond(req, shootId, { error: "Upload a transparent PNG logo first." });
+    }
   }
 
   await prisma.shoot.update({
@@ -54,7 +61,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       watermarkType: fields.type === "logo" ? "LOGO" : "TEXT",
       watermarkText: fields.text || shoot.watermarkText,
       watermarkLogoPath,
+      watermarkMode: fields.mode === "tiled" ? "TILED" : "SINGLE",
       watermarkPosition: fields.position,
+      watermarkPosXPct: fields.posXPct,
+      watermarkPosYPct: fields.posYPct,
       watermarkSizePct: fields.sizePercent,
       watermarkOpacity: fields.opacity,
       watermarkRotation: fields.rotationDeg,

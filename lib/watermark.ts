@@ -1,8 +1,10 @@
-import sharp from "sharp";
+import sharp, { type Sharp } from "sharp";
 
 export const DEFAULT_WATERMARK_TEXT = "PROOF";
 
 export type WatermarkType = "text" | "logo";
+
+export type WatermarkMode = "single" | "tiled";
 
 export type WatermarkPosition =
   | "TOP_LEFT"
@@ -13,9 +15,10 @@ export type WatermarkPosition =
   | "MIDDLE_RIGHT"
   | "BOTTOM_LEFT"
   | "BOTTOM_CENTER"
-  | "BOTTOM_RIGHT";
+  | "BOTTOM_RIGHT"
+  | "CUSTOM";
 
-const GRAVITY_BY_POSITION: Record<WatermarkPosition, string> = {
+const GRAVITY_BY_POSITION: Record<Exclude<WatermarkPosition, "CUSTOM">, string> = {
   TOP_LEFT: "northwest",
   TOP_CENTER: "north",
   TOP_RIGHT: "northeast",
@@ -27,19 +30,35 @@ const GRAVITY_BY_POSITION: Record<WatermarkPosition, string> = {
   BOTTOM_RIGHT: "southeast",
 };
 
+/** Shrinks an RGBA stamp so it never exceeds the base image dimensions. */
+async function fitWithin(stamp: Buffer, maxWidth: number, maxHeight: number): Promise<Buffer> {
+  const { width, height } = await sharp(stamp).metadata();
+  if (!width || !height || (width <= maxWidth && height <= maxHeight)) return stamp;
+  return sharp(stamp)
+    .resize({ width: maxWidth, height: maxHeight, fit: "inside" })
+    .png()
+    .toBuffer();
+}
+
 export interface WatermarkConfig {
   type: WatermarkType;
   /** Required when type === "text". */
   text?: string;
   /** Required when type === "logo": a transparent PNG buffer. */
   logo?: Buffer;
+  /** "single" places one stamp; "tiled" repeats it across the whole image. */
+  mode: WatermarkMode;
+  /** Ignored when mode === "tiled". */
   position: WatermarkPosition;
+  /** Stamp center as a percentage of image width/height; used when position === "CUSTOM". */
+  posXPct?: number;
+  posYPct?: number;
   /** Stamp width as a percentage of the base image width. */
   sizePercent: number;
   /** 0-1 */
   opacity: number;
   rotationDeg: number;
-  /** Percentage of min(imageWidth, imageHeight); ignored for CENTER. */
+  /** single: distance from the edge; tiled: spacing between repeats. % of min(w, h). */
   marginPercent: number;
 }
 
@@ -129,19 +148,49 @@ export async function applyWatermark(
   }
 
   const marginPx = Math.round((Math.min(width, height) * marginPercent) / 100);
-  if (marginPx > 0) {
+
+  let composited: Sharp;
+  if (config.mode === "tiled") {
+    // Pad the stamp on all sides so repeats have breathing room, then let
+    // sharp tile it across the full image.
+    const gap = Math.max(marginPx, 8);
     stamp = await sharp(stamp)
-      .extend({ top: marginPx, bottom: marginPx, left: marginPx, right: marginPx, background: TRANSPARENT })
+      .extend({
+        top: Math.ceil(gap / 2),
+        bottom: Math.ceil(gap / 2),
+        left: Math.ceil(gap / 2),
+        right: Math.ceil(gap / 2),
+        background: TRANSPARENT,
+      })
       .png()
       .toBuffer();
+    stamp = await fitWithin(stamp, width, height);
+    composited = image.composite([{ input: stamp, tile: true, gravity: "northwest" }]);
+  } else if (config.position === "CUSTOM") {
+    stamp = await fitWithin(stamp, width, height);
+    const meta = await sharp(stamp).metadata();
+    const stampW = meta.width ?? 1;
+    const stampH = meta.height ?? 1;
+    const cx = Math.min(Math.max(config.posXPct ?? 50, 0), 100);
+    const cy = Math.min(Math.max(config.posYPct ?? 50, 0), 100);
+    const left = Math.min(Math.max(Math.round((width * cx) / 100 - stampW / 2), 0), width - stampW);
+    const top = Math.min(Math.max(Math.round((height * cy) / 100 - stampH / 2), 0), height - stampH);
+    composited = image.composite([{ input: stamp, left, top }]);
+  } else {
+    if (marginPx > 0) {
+      stamp = await sharp(stamp)
+        .extend({ top: marginPx, bottom: marginPx, left: marginPx, right: marginPx, background: TRANSPARENT })
+        .png()
+        .toBuffer();
+    }
+    stamp = await fitWithin(stamp, width, height);
+    composited = image.composite([
+      {
+        input: stamp,
+        gravity: GRAVITY_BY_POSITION[config.position],
+      },
+    ]);
   }
-
-  const composited = image.composite([
-    {
-      input: stamp,
-      gravity: GRAVITY_BY_POSITION[config.position],
-    },
-  ]);
 
   if (format === "jpeg") {
     return { buffer: await composited.jpeg({ quality: 92 }).toBuffer(), format: "jpeg" };

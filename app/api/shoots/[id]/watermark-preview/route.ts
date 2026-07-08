@@ -6,6 +6,7 @@ import { PLANS } from "@/lib/plans";
 import { readFileFromStorage } from "@/lib/storage";
 import { applyWatermark } from "@/lib/watermark";
 import { parseWatermarkFields } from "@/lib/watermark-form";
+import { resolveLogoBuffer } from "@/lib/watermark-logo";
 
 async function sampleBaseImage(shootId: string): Promise<Buffer> {
   const image = await prisma.image.findFirst({ where: { shootId }, orderBy: { createdAt: "desc" } });
@@ -38,22 +39,26 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const form = await req.formData();
   const fields = parseWatermarkFields(form);
 
-  if (fields.type === "logo" && !fields.logoFile && !shoot.watermarkLogoPath) {
+  const logo = await resolveLogoBuffer({
+    userId: user.id,
+    logoFile: fields.logoFile,
+    templateId: fields.templateId,
+    shootLogoPath: shoot.watermarkLogoPath,
+  });
+
+  if (fields.type === "logo" && !logo) {
     return NextResponse.json({ error: "Upload a transparent PNG logo first." }, { status: 400 });
   }
-
-  const logo = fields.logoFile
-    ? Buffer.from(await fields.logoFile.arrayBuffer())
-    : shoot.watermarkLogoPath
-      ? await readFileFromStorage(shoot.watermarkLogoPath)
-      : undefined;
 
   const base = await sampleBaseImage(shootId);
   const { buffer, format } = await applyWatermark(base, {
     type: fields.type,
     text: fields.text,
     logo,
+    mode: fields.mode,
     position: fields.position,
+    posXPct: fields.posXPct,
+    posYPct: fields.posYPct,
     sizePercent: fields.sizePercent,
     opacity: fields.opacity,
     rotationDeg: fields.rotationDeg,

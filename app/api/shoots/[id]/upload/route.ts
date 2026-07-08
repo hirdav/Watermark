@@ -63,7 +63,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           shoot.watermarkType === "LOGO" && shoot.watermarkLogoPath
             ? await readFileFromStorage(shoot.watermarkLogoPath)
             : undefined,
+        mode: shoot.watermarkMode === "TILED" ? "tiled" : "single",
         position: shoot.watermarkPosition,
+        posXPct: shoot.watermarkPosXPct,
+        posYPct: shoot.watermarkPosYPct,
         sizePercent: shoot.watermarkSizePct,
         opacity: shoot.watermarkOpacity,
         rotationDeg: shoot.watermarkRotation,
@@ -72,6 +75,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     : {
         type: "text",
         text: undefined,
+        mode: "single",
         position: "CENTER",
         sizePercent: 40,
         opacity: 0.3,
