@@ -61,7 +61,7 @@ function buildTextStampSVG(stampWidth: number, text: string, opacity: number): B
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
   <text
     x="${paddingX}" y="${Math.round(height * 0.72)}"
-    font-family="Arial, Helvetica, sans-serif"
+    font-family="'DejaVu Sans', Arial, Helvetica, sans-serif"
     font-weight="bold"
     font-size="${fontSize}"
     fill="rgba(255,255,255,${opacity})"
