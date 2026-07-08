@@ -16,5 +16,5 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
 
   await prisma.image.update({ where: { id: imageId }, data: { selected: !image.selected } });
 
-  return NextResponse.redirect(new URL(`/gallery/${token}`, req.url), { status: 303 });
+  return new Response(null, { status: 303, headers: { Location: `/gallery/${token}` } });
 }

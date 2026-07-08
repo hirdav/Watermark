@@ -12,9 +12,9 @@ const ALLOWED_EXT = new Set([".jpg", ".jpeg", ".png"]);
 function respond(req: Request, shootId: string, params: Record<string, string>) {
   const wantsHtml = req.headers.get("accept")?.includes("text/html");
   if (wantsHtml) {
-    const url = new URL(`/dashboard/shoots/${shootId}`, req.url);
-    for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
-    return NextResponse.redirect(url, { status: 303 });
+    const query = new URLSearchParams(params).toString();
+    const location = `/dashboard/shoots/${shootId}${query ? `?${query}` : ""}`;
+    return new Response(null, { status: 303, headers: { Location: location } });
   }
   return NextResponse.json(params, { status: params.error ? 400 : 201 });
 }
