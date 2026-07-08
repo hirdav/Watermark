@@ -34,7 +34,7 @@ export default async function PricingPage() {
               <ul className="mt-4 space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
                 <li>{plan.maxShoots === Infinity ? "Unlimited" : plan.maxShoots} active shoot(s)</li>
                 <li>{plan.maxImagesPerMonth === Infinity ? "Unlimited" : plan.maxImagesPerMonth} images / month</li>
-                <li>{plan.customWatermarkText ? "Custom watermark text" : "Default watermark text"}</li>
+                <li>{plan.customWatermark ? "Custom logo/text watermark" : "Default watermark"}</li>
               </ul>
               <div className="mt-6">
                 {isCurrent ? (

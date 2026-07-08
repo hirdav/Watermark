@@ -11,6 +11,10 @@ export function watermarkedPathFor(userId: string, shootId: string, filename: st
   return join(userId, shootId, "watermarked", filename);
 }
 
+export function logoPathFor(userId: string, shootId: string): string {
+  return join(userId, shootId, "watermark-logo.png");
+}
+
 export async function saveFile(relativePath: string, data: Buffer): Promise<void> {
   const fullPath = join(STORAGE_DIR, relativePath);
   await mkdir(dirname(fullPath), { recursive: true });

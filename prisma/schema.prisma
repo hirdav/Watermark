@@ -18,6 +18,23 @@ enum Plan {
   STUDIO
 }
 
+enum WatermarkType {
+  TEXT
+  LOGO
+}
+
+enum WatermarkPosition {
+  TOP_LEFT
+  TOP_CENTER
+  TOP_RIGHT
+  MIDDLE_LEFT
+  CENTER
+  MIDDLE_RIGHT
+  BOTTOM_LEFT
+  BOTTOM_CENTER
+  BOTTOM_RIGHT
+}
+
 model User {
   id                 String        @id @default(cuid())
   email              String        @unique
@@ -42,14 +59,21 @@ model Subscription {
 }
 
 model Shoot {
-  id            String   @id @default(cuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id])
-  title         String
-  shareToken    String   @unique @default(cuid())
-  watermarkText String   @default("PROOF")
-  images        Image[]
-  createdAt     DateTime @default(now())
+  id                 String            @id @default(cuid())
+  userId             String
+  user               User              @relation(fields: [userId], references: [id])
+  title              String
+  shareToken         String            @unique @default(cuid())
+  watermarkType      WatermarkType     @default(TEXT)
+  watermarkText      String            @default("PROOF")
+  watermarkLogoPath  String?
+  watermarkPosition  WatermarkPosition @default(CENTER)
+  watermarkSizePct   Float             @default(40)
+  watermarkOpacity   Float             @default(0.3)
+  watermarkRotation  Float             @default(-30)
+  watermarkMarginPct Float             @default(4)
+  images             Image[]
+  createdAt          DateTime          @default(now())
 }
 
 model Image {

@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PLANS, startOfCurrentBillingPeriod } from "@/lib/plans";
+import { WatermarkSettings } from "./WatermarkSettings";
 
 export default async function ShootDetailPage({
   params,
@@ -38,12 +39,22 @@ export default async function ShootDetailPage({
 
       <div className="mt-2 flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">{shoot.title}</h1>
-        <a
-          href={`/api/shoots/${shoot.id}/download`}
-          className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-900"
-        >
-          Download all (.zip)
-        </a>
+        <div className="flex gap-2">
+          <a
+            href={`/api/shoots/${shoot.id}/download`}
+            className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-900"
+          >
+            Download all (.zip)
+          </a>
+          {shoot.images.some((image) => image.selected) && (
+            <a
+              href={`/api/shoots/${shoot.id}/download-selected`}
+              className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-900"
+            >
+              Download client-selected (originals)
+            </a>
+          )}
+        </div>
       </div>
 
       <div className="mt-4 flex items-center gap-2 rounded-md bg-zinc-100 px-4 py-3 text-sm dark:bg-zinc-900">
@@ -69,6 +80,21 @@ export default async function ShootDetailPage({
           {decodeURIComponent(error)}
         </p>
       )}
+
+      <WatermarkSettings
+        shootId={shoot.id}
+        allowed={planConfig.customWatermark}
+        initial={{
+          type: shoot.watermarkType,
+          text: shoot.watermarkText,
+          hasLogo: !!shoot.watermarkLogoPath,
+          position: shoot.watermarkPosition,
+          sizePercent: shoot.watermarkSizePct,
+          opacityPercent: Math.round(shoot.watermarkOpacity * 100),
+          rotation: shoot.watermarkRotation,
+          marginPercent: shoot.watermarkMarginPct,
+        }}
+      />
 
       <form
         action={`/api/shoots/${shoot.id}/upload`}

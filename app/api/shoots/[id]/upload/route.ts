@@ -4,8 +4,8 @@ import { extname } from "path";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PLANS, startOfCurrentBillingPeriod } from "@/lib/plans";
-import { originalPathFor, saveFile, watermarkedPathFor } from "@/lib/storage";
-import { applyWatermark } from "@/lib/watermark";
+import { originalPathFor, readFileFromStorage, saveFile, watermarkedPathFor } from "@/lib/storage";
+import { applyWatermark, type WatermarkConfig } from "@/lib/watermark";
 
 const ALLOWED_EXT = new Set([".jpg", ".jpeg", ".png"]);
 
@@ -55,7 +55,29 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     });
   }
 
-  const watermarkText = planConfig.customWatermarkText ? shoot.watermarkText : undefined;
+  const watermarkConfig: WatermarkConfig = planConfig.customWatermark
+    ? {
+        type: shoot.watermarkType === "LOGO" ? "logo" : "text",
+        text: shoot.watermarkText,
+        logo:
+          shoot.watermarkType === "LOGO" && shoot.watermarkLogoPath
+            ? await readFileFromStorage(shoot.watermarkLogoPath)
+            : undefined,
+        position: shoot.watermarkPosition,
+        sizePercent: shoot.watermarkSizePct,
+        opacity: shoot.watermarkOpacity,
+        rotationDeg: shoot.watermarkRotation,
+        marginPercent: shoot.watermarkMarginPct,
+      }
+    : {
+        type: "text",
+        text: undefined,
+        position: "CENTER",
+        sizePercent: 40,
+        opacity: 0.3,
+        rotationDeg: -30,
+        marginPercent: 4,
+      };
 
   let uploaded = 0;
   let skipped = 0;
@@ -68,7 +90,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     const inputBuffer = Buffer.from(await file.arrayBuffer());
-    const { buffer: watermarkedBuffer } = await applyWatermark(inputBuffer, { text: watermarkText });
+    const { buffer: watermarkedBuffer } = await applyWatermark(inputBuffer, watermarkConfig);
 
     const storedName = `${nanoid()}${ext}`;
     const originalRel = originalPathFor(user.id, shoot.id, storedName);

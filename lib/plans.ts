@@ -4,7 +4,7 @@ export interface PlanConfig {
   label: string;
   maxShoots: number;
   maxImagesPerMonth: number;
-  customWatermarkText: boolean;
+  customWatermark: boolean;
   priceINR: number | null;
   razorpayPlanId: string | null;
 }
@@ -14,7 +14,7 @@ export const PLANS: Record<PlanName, PlanConfig> = {
     label: "Free",
     maxShoots: 1,
     maxImagesPerMonth: 20,
-    customWatermarkText: false,
+    customWatermark: false,
     priceINR: null,
     razorpayPlanId: null,
   },
@@ -22,7 +22,7 @@ export const PLANS: Record<PlanName, PlanConfig> = {
     label: "Pro",
     maxShoots: Infinity,
     maxImagesPerMonth: 500,
-    customWatermarkText: true,
+    customWatermark: true,
     priceINR: 999,
     razorpayPlanId: process.env.RAZORPAY_PLAN_ID_PRO || null,
   },
@@ -30,7 +30,7 @@ export const PLANS: Record<PlanName, PlanConfig> = {
     label: "Studio",
     maxShoots: Infinity,
     maxImagesPerMonth: Infinity,
-    customWatermarkText: true,
+    customWatermark: true,
     priceINR: 2999,
     razorpayPlanId: process.env.RAZORPAY_PLAN_ID_STUDIO || null,
   },

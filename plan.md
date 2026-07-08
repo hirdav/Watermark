@@ -130,3 +130,43 @@ contine with this - Here's the refreshed brief — paste into the other session:
 **6. After it's live**, register the Razorpay webhook at `https://watermark.edantra.online/api/billing/webhook` (no angle brackets), subscribed to `subscription.activated`, `subscription.charged`, `subscription.cancelled`, `subscription.halted` — copy the resulting webhook secret into `RAZORPAY_WEBHOOK_SECRET` on Railway.
 
 ---
+
+## 2026-07-08 — Where things stand, and the product pivot in progress
+
+### Deployed and working
+The app went live at `https://watermark.edantra.online` on Railway (Postgres + persistent volume, custom domain, cert issued). Two production bugs found and fixed after launch, both the same underlying class of issue — code trusting `req.url` / needing to trust Railway's reverse-proxy headers:
+- **Login broke in prod** (`UntrustedHost` from Auth.js) — fixed by adding `trustHost: true` to `lib/auth.config.ts`.
+- **Post-upload/post-favorite redirects sent the browser to `localhost:8080`** instead of the real domain — `req.url` resolved to the container's internal host behind Railway's proxy. Fixed in `app/api/shoots/[id]/upload/route.ts` and `app/api/gallery/[token]/select/route.ts` by issuing a **relative** `Location` header instead of `new URL(path, req.url)`, so the browser resolves it against its own current origin instead of trusting the server's view of the host.
+
+Razorpay checkout/webhook wiring, plan quotas, and the shoot/gallery/favorite-select loop were all confirmed working in prod (a real checkout call and webhook delivery were observed in Railway logs).
+
+### The pivot: why we're rebuilding the watermark step
+The original MVP watermarked every photo with a fixed, near-invisible, tiled diagonal forensic mark — good for theft *detection*, not for what a working photographer actually needs. Reframing (2026-07-08 discussion):
+
+> A photographer doesn't watermark for fun. They watermark to send previews before payment. So the killer workflow isn't "upload, stamp, download." It's "upload a batch, auto-watermark, get a shareable gallery link, client selects, you deliver clean files after payment." The watermark is a feature; **the proofing loop is the product.**
+
+Decisions locked in:
+- **Keep**: accounts, Razorpay billing/plan tiers, the `Shoot` model, and the public gallery/favorite-select loop — that loop *is* the product, don't touch it.
+- **Replace**: the fixed tiled-text engine with a configurable single-stamp watermark — photographer picks **text or a transparent PNG logo**, then sets **position (9-grid), size, opacity, rotation, margin from edge**. FREE stays locked to a default; PRO/STUDIO unlock full customization (reusing the existing plan-gate boolean, renamed `customWatermarkText` → `customWatermark`).
+- **Add**: a "download client-selected photos as originals" route — this is the missing half of "deliver clean files after payment" (previously the only download option zipped *all* photos at *watermarked* quality; there was no way to hand over clean files for just the favorites).
+- **Deferred on purpose**: video watermarking (needs an ffmpeg pipeline — phase 2) and Google Drive export (needs OAuth consent screen + Google verification — separate follow-up). Images + local zip download only, for now.
+
+Full design detail (sharp compositing pipeline, gravity mapping, opacity/margin technique, data model, route list) lives in the Claude plan file used to build this: `C:\Users\HWealth\.claude\plans\sequential-singing-penguin.md`.
+
+### Status of the pivot as of now
+Implemented, not yet committed or deployed:
+- `prisma/schema.prisma` — `Shoot` gained `watermarkType`, `watermarkLogoPath`, `watermarkPosition`, `watermarkSizePct`, `watermarkOpacity`, `watermarkRotation`, `watermarkMarginPct` (+ two new enums). Migration written by diffing the schema file directly (no local Postgres available to generate it live) — will apply automatically via the existing `prisma migrate deploy && next start` boot step on next deploy.
+- `lib/watermark.ts` — fully rewritten: sharp `gravity` for the 9 positions, raw-buffer alpha scaling for logo opacity, `rotate()` with transparent background, `extend()` padding for margin.
+- New routes: `watermark-config` (save settings + optional logo upload), `watermark-preview` (in-memory render for a live preview, no persistence), `download-selected` (zips originals of only client-favorited photos).
+- `upload/route.ts` now builds the watermark from the shoot's saved config instead of a hardcoded text string.
+- New `WatermarkSettings` client component (the app's first — needed for the live-updating preview as sliders move) wired into the shoot detail page, plus a second download button.
+- Verified: `tsc --noEmit`, `npm run lint`, and `npm run build` all pass. The engine itself was verified visually against synthetic test images (all 9-position/opacity/rotation/margin combinations render correctly).
+- **Not yet verified**: clicking through the actual browser flow (login → configure watermark → upload → client favorites → download-selected). Local `.env` has a stale SQLite-style `DATABASE_URL` left over from before the Postgres migration, and there's no local Postgres/docker in this environment — so `npm run dev` can't be exercised end-to-end locally right now. Needs either a local Postgres pointed at, or a manual click-through after deploying.
+
+### Next steps
+1. Get a local Postgres reachable (or accept testing only after deploy) and click through the full flow once.
+2. Commit and deploy; confirm the migration applies cleanly on Railway boot.
+3. Manually verify in prod: set a logo watermark, upload a batch, favorite a few in the public gallery, download-selected, confirm it's clean/original quality.
+4. Phase 2 (later): video watermarking via ffmpeg; Google Drive export via OAuth.
+
+---
