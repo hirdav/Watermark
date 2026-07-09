@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Banner } from "@/components/ui/Banner";
 
 const SINGLE_POSITIONS = [
   ["TOP_LEFT", "Top left"],
@@ -65,7 +66,7 @@ const STEPS = [
 ];
 
 const inputCls =
-  "w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900";
+  "w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-900/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:ring-zinc-50/10";
 const chipCls = (active: boolean) =>
   `rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
     active
@@ -73,11 +74,11 @@ const chipCls = (active: boolean) =>
       : "border-zinc-300 text-zinc-600 hover:border-zinc-500 dark:border-zinc-700 dark:text-zinc-300"
   }`;
 const primaryBtn =
-  "rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900";
+  "rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200";
 const secondaryBtn =
-  "rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-900";
+  "rounded-lg border border-zinc-300 px-4 py-2.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-900";
 const cardCls =
-  "w-full rounded-lg border border-zinc-300 p-5 text-left transition-colors hover:border-zinc-500 dark:border-zinc-700 dark:hover:border-zinc-400";
+  "w-full rounded-xl border border-zinc-300 p-5 text-left shadow-sm transition-all hover:border-zinc-500 hover:shadow-md dark:border-zinc-700 dark:hover:border-zinc-400";
 
 export function ShootWizard({ shootId, allowed, templates: initialTemplates, images, initial }: ShootWizardProps) {
   const router = useRouter();
@@ -288,15 +289,9 @@ export function ShootWizard({ shootId, allowed, templates: initialTemplates, ima
       </ol>
 
       {notice && (
-        <p
-          className={`mt-4 rounded-md px-3 py-2 text-sm ${
-            notice.kind === "ok"
-              ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
-              : "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300"
-          }`}
-        >
+        <Banner kind={notice.kind === "ok" ? "success" : "error"} className="mt-4">
           {notice.text}
-        </p>
+        </Banner>
       )}
 
       {/* Step 1 — choose watermark */}
@@ -629,23 +624,38 @@ export function ShootWizard({ shootId, allowed, templates: initialTemplates, ima
 
           <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
             {images.map((image) => (
-              <div key={image.id} className="overflow-hidden rounded-md border border-zinc-200 dark:border-zinc-800">
+              <div
+                key={image.id}
+                className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={`/api/images/${image.id}`} alt={image.filename} className="aspect-square w-full object-cover" />
-                <div className="flex items-center justify-between px-2 py-1 text-xs">
+                <div className="flex items-center justify-between px-2.5 py-1.5 text-xs">
                   <span className="truncate text-zinc-500">{image.filename}</span>
-                  <a href={`/api/images/${image.id}`} download={image.filename} className="ml-2 shrink-0 font-medium underline">
+                  <a href={`/api/images/${image.id}`} download={image.filename} className="ml-2 shrink-0 font-medium text-zinc-900 hover:underline dark:text-zinc-50">
                     Save
                   </a>
                 </div>
                 {image.selected && (
-                  <p className="bg-amber-100 px-2 py-1 text-center text-xs font-medium text-amber-800">★ Client favorite</p>
+                  <p className="bg-amber-100 px-2 py-1.5 text-center text-xs font-medium text-amber-800">★ Client favorite</p>
                 )}
               </div>
             ))}
           </div>
           {images.length === 0 && (
-            <p className="mt-8 text-center text-sm text-zinc-500">No photos yet — upload some in the previous step.</p>
+            <div className="mt-14 flex flex-col items-center gap-3 text-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
+                <svg className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path
+                    fillRule="evenodd"
+                    d="M1 5.25A2.25 2.25 0 013.25 3h13.5A2.25 2.25 0 0119 5.25v9.5A2.25 2.25 0 0116.75 17H3.25A2.25 2.25 0 011 14.75v-9.5zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 00.75-.75v-2.69l-2.22-2.219a.75.75 0 00-1.06 0l-1.91 1.909.47.47a.75.75 0 11-1.06 1.06L6.53 8.091a.75.75 0 00-1.06 0l-2.97 2.969zM12 7a1 1 0 11-2 0 1 1 0 012 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </span>
+              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">No photos yet</p>
+              <p className="text-sm text-zinc-500">Upload some in the previous step.</p>
+            </div>
           )}
         </div>
       )}

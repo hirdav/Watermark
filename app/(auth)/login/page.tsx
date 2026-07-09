@@ -2,13 +2,17 @@ import { AuthError } from "next-auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { signIn } from "@/lib/auth";
+import { PasswordField } from "@/components/auth/PasswordField";
+import { SubmitButton } from "@/components/auth/SubmitButton";
+import { FormMessage } from "@/components/auth/FormMessage";
+import { TrustNote } from "@/components/auth/TrustNote";
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; callbackUrl?: string }>;
+  searchParams: Promise<{ error?: string; callbackUrl?: string; reset?: string }>;
 }) {
-  const { error, callbackUrl } = await searchParams;
+  const { error, callbackUrl, reset } = await searchParams;
   const redirectTo = callbackUrl || "/dashboard";
 
   async function loginAction(formData: FormData) {
@@ -28,50 +32,54 @@ export default async function LoginPage({
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6">
-      <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">Log in</h1>
-      <p className="mt-1 text-sm text-zinc-500">Sign in to manage your shoots.</p>
+    <div className="w-full max-w-sm">
+      <div className="rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Welcome back</h1>
+        <p className="mt-1.5 text-sm text-zinc-500">Log in to manage your shoots and client galleries.</p>
 
-      {error && (
-        <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-          Invalid email or password.
-        </p>
-      )}
+        <form action={loginAction} className="mt-7 flex flex-col gap-4">
+          <input type="hidden" name="callbackUrl" value={redirectTo} />
 
-      <form action={loginAction} className="mt-6 flex flex-col gap-4">
-        <input type="hidden" name="callbackUrl" value={redirectTo} />
-        <div>
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Email</label>
-          <input
-            type="email"
-            name="email"
-            required
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Password</label>
-          <input
-            type="password"
+          {reset === "success" && <FormMessage kind="success">Password updated — log in with your new password.</FormMessage>}
+          {error && <FormMessage kind="error">Invalid email or password. Please try again.</FormMessage>}
+
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              name="email"
+              required
+              autoComplete="email"
+              placeholder="you@example.com"
+              className="mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 shadow-sm outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-900/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:focus:border-zinc-500 dark:focus:ring-zinc-50/10"
+            />
+          </div>
+
+          <PasswordField
             name="password"
-            required
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            label="Password"
+            autoComplete="current-password"
+            labelExtra={
+              <Link href="/forgot-password" className="text-xs font-medium text-zinc-500 hover:text-zinc-900 hover:underline dark:hover:text-zinc-100">
+                Forgot password?
+              </Link>
+            }
           />
-        </div>
-        <button
-          type="submit"
-          className="mt-2 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900"
-        >
-          Log in
-        </button>
-      </form>
 
-      <p className="mt-6 text-sm text-zinc-500">
-        No account?{" "}
-        <Link href="/signup" className="font-medium text-zinc-900 underline dark:text-zinc-50">
-          Sign up
-        </Link>
-      </p>
+          <SubmitButton pendingText="Logging in…">Log in</SubmitButton>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-zinc-500">
+          No account?{" "}
+          <Link href="/signup" className="font-medium text-zinc-900 hover:underline dark:text-zinc-50">
+            Sign up free
+          </Link>
+        </p>
+      </div>
+      <TrustNote />
     </div>
   );
 }
