@@ -194,3 +194,33 @@ Complete UX rebuild of the shoot page (commit `2b7eba7`), deployed and verified 
 **✔ Resolved — custom domain DNS outage (same day)**: the `watermark` CNAME had disappeared from the Hostinger zone (NXDOMAIN from public resolvers). Re-added in Hostinger DNS Zone Editor as CNAME `watermark` → `watermark-app-production-2953.up.railway.app` (pointing at the service's generated domain works — Railway routes by Host header). Verified after propagation: login, wizard page, templates API, tiled preview, public gallery, and the Razorpay webhook endpoint all pass on `https://watermark.edantra.online`. Lesson: the Railway-generated domain is the stable fallback for verification when the custom domain misbehaves.
 
 ---
+
+## 2026-07-09 — Production-ready redesign: marketing site, polished auth, app-wide UX
+
+Full pre-launch polish pass, deployed and verified (commit `b033bea`).
+
+### Marketing landing page
+New `(marketing)` route group wraps `/` and `/pricing` (moved via `git mv`, URLs unchanged) with a shared `Header` (sticky, mobile hamburger menu) and `Footer` (Product/Account/Company/Legal columns). Landing page (`app/(marketing)/_sections/*.tsx`): Hero with a CSS/SVG mock gallery card (no fabricated screenshots), How It Works (3 steps mapped to the real wizard), Use Cases (photographers/designers/creators/businesses/agencies), Features grid, Testimonials (clearly comment-marked as placeholder quotes — first name + generic role only, no fake avatars/ratings/counts, to avoid fabricated social proof), FAQ (native `<details>`, no JS needed), final CTA band. Added `/privacy`, `/terms`, `/contact` (contact form sends via the new mail abstraction).
+
+### Auth: forgot/reset password + polish
+- `PasswordResetToken` model (hashed token, 1-hour expiry, single-use) + `lib/password-reset.ts`.
+- `lib/mail.ts`: SMTP send via `nodemailer` when `SMTP_HOST` is configured; otherwise logs the email (including the reset link) to the server console — documented in `.env.example`, same manual-setup pattern as Razorpay. No SMTP credentials exist for this project yet, so prod currently runs on the console-log fallback.
+- `/forgot-password` (always shows the same generic message, whether or not the account exists — no user-enumeration) and `/reset-password/[token]` (invalid/expired token shows a distinct state, not a crash).
+- Login/signup rebuilt with shared components: `PasswordField` (show/hide toggle + strength meter), `SubmitButton` (pending spinner via `useFormStatus`), `FormMessage`, `TrustNote` (honest claims only: HTTPS, bcrypt hashing, no data resale — no fabricated certifications or fake review counts).
+- New minimal `(auth)` layout (logo + link home, no full nav).
+
+### App-wide UX
+Refreshed dashboard layout (Logo, cleaner nav) and dashboard page (card-style shoot list, empty state, `Banner` component for errors/success). Shoot detail page gained a copy-to-clipboard gallery link (`CopyButton`, built from real request headers not `req.url`) and a usage progress bar. Gallery page restyled (favorite ring/badge, hover zoom, empty state). Pricing page redesigned with a "Most popular" badge and checkmarked feature lists. Visual-consistency pass on `ShootWizard.tsx` (rounded-xl, shadows, `Banner` for notices) without touching its working logic/state.
+
+### Verification
+- `tsc`, `lint`, `npm run build` all pass.
+- Local dev server (no working `DATABASE_URL` in this environment): confirmed the landing page, mobile nav (hamburger opens/closes), password show/hide toggle, signup strength meter, forgot-password page, and FAQ accordion all render/behave correctly — none of these routes touch the DB.
+- **Prod, after deploy** (migration `20260709090000_add_password_reset_token` applied cleanly on boot): drove the *full* forgot-password → reset-password → login loop with a real browser (Chrome, via `claude-in-chrome` — Next.js Server Actions can't be triggered by a raw `fetch` POST from a script; only a real browser submits the encoded action reference correctly). Read the console-logged reset link from Railway deploy logs, opened it, set a new password, and logged in with it successfully. Screenshotted the landing page, pricing page (correctly showed "Current plan" for the signed-in Pro account), and the shoot wizard page (copy-link button, usage bar, existing watermarked photos all intact).
+- Note: the `Claude_Preview` screenshot tool was unreliable in this session (timed out repeatedly) even though the page was healthy — fell back to `preview_snapshot`/`preview_eval`/`preview_inspect` for the dev-server pass, and to `claude-in-chrome` for prod screenshots, which worked reliably throughout.
+
+### Known gaps / next steps
+- No SMTP provider is configured yet — reset emails only reach the server console, not real inboxes. Set `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS`/`SMTP_FROM` (any provider — Resend, Postmark, SES, etc.) on Railway to send real emails.
+- Testimonials on the landing page are placeholder quotes (clearly marked in code) — swap in real customer quotes once available.
+- `resize_window` in the `claude-in-chrome` tool didn't visibly affect the screenshot viewport in this environment; mobile-layout confirmation instead came from the dev-server accessibility-tree pass (nav collapse + hamburger menu behavior), not a mobile screenshot.
+
+---
