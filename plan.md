@@ -230,4 +230,16 @@ Fix: switched `lib/mail.ts` from nodemailer/SMTP to **Resend's HTTPS API** (comm
 
 Not yet done: the user hasn't created the Resend account/API key yet, so prod is still on the console-log fallback for reset emails.
 
+## 2026-07-09 (evening) — Resend fully wired up and verified end-to-end
+
+Resend account created, `mail.edantra.online` domain added and DNS-verified (SPF/MX/DKIM records added to Hostinger's DNS Zone Editor for the root `edantra.online` zone, relative names `send.mail` and `resend._domainkey.mail`). `RESEND_API_KEY` and `MAIL_FROM` set on the Railway service; `MAIL_FROM` initially pointed at Resend's sandbox address (`onboarding@resend.dev`, which only sends to the account owner's own inbox) and was later switched to `Proof <no-reply@mail.edantra.online>` once the domain verified, unlocking sends to arbitrary recipients.
+
+**Getting the Railway env vars to actually take effect was the hard part** — worth recording in detail since it cost significant time:
+- Setting variables via the Railway MCP's `updateServiceTool` + triggering a deploy repeatedly reported success, but the running container never saw the new values (confirmed via a temporary `/api/debug-env` diagnostic route and via the real forgot-password send still hitting the console-fallback across 4 separate deploy cycles).
+- Root cause: the Railway dashboard was showing an **"Apply N changes"** banner with a stuck, malformed pending change — `+ Service Domain: watermark\` (garbage data, likely from an earlier tool call) — which was silently blocking the *entire* batched changeset (including the real variable edits) from applying, because it tripped the account's "reached the limit for service domains per service" cap. Discarding just that one bad row from the pending-changes diff and clicking **Deploy Changes** let the real variable changes go through.
+- Lesson: dashboard/API variable edits on this project can sit in a **staged-but-not-applied** state indefinitely; `redeploy`/`deployServiceTool` calls do NOT apply staged variable diffs — only the dashboard's own "Deploy Changes" confirmation does. If env vars don't seem to take effect after a Railway MCP update, check the dashboard for a pending-changes banner before assuming the deploy is broken.
+- Fixed a real bug found in the process: `sendMail()` throwing on a Resend API error (e.g. the sandbox-recipient restriction) was crashing the forgot-password request with a raw 500 instead of degrading gracefully. Now caught and logged, falling through to the same generic success message (commit `6ce6cc6`).
+
+**Verified**: real email delivery confirmed twice — once to the Resend account owner's own inbox (sandbox mode, before domain verification) and once to an arbitrary recipient (`test@testing.com`) after domain verification, both via the actual browser-driven forgot-password flow with no errors logged. The password-reset email pipeline is fully live in production.
+
 ---
