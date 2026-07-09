@@ -1,20 +1,11 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
-let transporter: ReturnType<typeof nodemailer.createTransport> | null = null;
+let client: Resend | null = null;
 
-function getTransporter() {
-  if (!process.env.SMTP_HOST) return null;
-  if (!transporter) {
-    transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT ?? 587),
-      secure: process.env.SMTP_SECURE === "true",
-      auth: process.env.SMTP_USER
-        ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-        : undefined,
-    });
-  }
-  return transporter;
+function getClient(): Resend | null {
+  if (!process.env.RESEND_API_KEY) return null;
+  if (!client) client = new Resend(process.env.RESEND_API_KEY);
+  return client;
 }
 
 interface SendMailParams {
@@ -25,24 +16,29 @@ interface SendMailParams {
 }
 
 /**
- * Sends transactional email via SMTP when configured. Falls back to logging
- * the message server-side when no SMTP env vars are set — this keeps local
- * dev and this environment (no email provider account) fully functional
- * without ever exposing the message content to the client.
+ * Sends transactional email via Resend's HTTPS API when configured. Falls
+ * back to logging the message server-side when no API key is set — this
+ * keeps local dev and this environment (no email provider account yet)
+ * fully functional without ever exposing the message content to the client.
+ *
+ * Uses an HTTPS API rather than SMTP because Railway (and most PaaS hosts)
+ * block outbound SMTP ports (25/465/587) on lower tiers to fight spam abuse
+ * — HTTPS is never blocked, so this works on every plan.
  */
 export async function sendMail({ to, subject, html, text }: SendMailParams): Promise<void> {
-  const client = getTransporter();
-  if (!client) {
+  const resend = getClient();
+  if (!resend) {
     console.log(`[mail:dev-fallback] To: ${to}\nSubject: ${subject}\n\n${text}`);
     return;
   }
-  await client.sendMail({
-    from: process.env.SMTP_FROM || "Proof <no-reply@proof.app>",
+  const { error } = await resend.emails.send({
+    from: process.env.MAIL_FROM || "Proof <no-reply@proof.app>",
     to,
     subject,
     html,
     text,
   });
+  if (error) throw new Error(`Resend send failed: ${error.message}`);
 }
 
 export function passwordResetEmail(resetUrl: string) {

@@ -27,6 +27,20 @@ flow itself — only required to test the billing/pricing page.
 Uploaded and watermarked images are written to `STORAGE_DIR` (default `./storage`,
 gitignored). On Railway, mount a persistent volume at this path.
 
+## Resend setup (manual, one-time — for password-reset and contact-form email)
+
+Emails are sent via [Resend](https://resend.com)'s HTTPS API rather than SMTP, because Railway
+(and most PaaS hosts) block outbound SMTP ports on lower tiers — HTTPS is never blocked. Without
+this configured, reset links are logged to the server console instead of emailed (fine for local
+dev, not for production).
+
+1. Create a free Resend account → API Keys → generate a key → set `RESEND_API_KEY`.
+2. Domains → Add Domain → verify a **subdomain** of your site, e.g. `mail.yourdomain.com`, not the
+   root domain. This keeps Resend's SPF/DKIM records isolated from any existing mail hosting
+   (e.g. Hostinger email) on the root domain — add the TXT/MX records Resend gives you to that
+   subdomain's DNS zone.
+3. Set `MAIL_FROM="Proof <no-reply@mail.yourdomain.com>"` (must use the verified subdomain).
+
 ## Razorpay setup (manual, one-time)
 
 1. Create a Razorpay account and switch to **Test Mode**.
