@@ -219,8 +219,15 @@ Refreshed dashboard layout (Logo, cleaner nav) and dashboard page (card-style sh
 - Note: the `Claude_Preview` screenshot tool was unreliable in this session (timed out repeatedly) even though the page was healthy — fell back to `preview_snapshot`/`preview_eval`/`preview_inspect` for the dev-server pass, and to `claude-in-chrome` for prod screenshots, which worked reliably throughout.
 
 ### Known gaps / next steps
-- No SMTP provider is configured yet — reset emails only reach the server console, not real inboxes. Set `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS`/`SMTP_FROM` (any provider — Resend, Postmark, SES, etc.) on Railway to send real emails.
 - Testimonials on the landing page are placeholder quotes (clearly marked in code) — swap in real customer quotes once available.
 - `resize_window` in the `claude-in-chrome` tool didn't visibly affect the screenshot viewport in this environment; mobile-layout confirmation instead came from the dev-server accessibility-tree pass (nav collapse + hamburger menu behavior), not a mobile screenshot.
+
+## 2026-07-09 (later) — Mail delivery: SMTP → Resend (Railway blocks outbound SMTP)
+
+User wanted to self-host a mail server (Postal) on Railway for the password-reset flow. Checked and it's not viable: **Railway blocks all outbound SMTP ports (25/465/587/2525) on Free/Trial/Hobby plans**, and even the Pro-plan exception is for relaying *through* a provider's SMTP endpoint, not running your own MTA — Postal needs unrestricted outbound port 25 to arbitrary destination mail servers (how SMTP delivery works), which is exactly the traffic every PaaS blocks hardest. Postal's own docs also assume a full VPS with Docker Compose/root access and a static IP with reverse-DNS (PTR) control, none of which Railway's container model provides.
+
+Fix: switched `lib/mail.ts` from nodemailer/SMTP to **Resend's HTTPS API** (commit `ad3f4c0`) — HTTPS is never blocked, so this works on every Railway plan. Still falls back to console-logging the message when `RESEND_API_KEY` is unset. Manual one-time setup (documented in README, mirrors the Razorpay pattern): create a Resend account, verify **`mail.edantra.online`** (a subdomain, not the root `edantra.online`) so its SPF/DKIM records don't clash with the root domain's existing Hostinger email hosting, set `RESEND_API_KEY` and `MAIL_FROM` on Railway.
+
+Not yet done: the user hasn't created the Resend account/API key yet, so prod is still on the console-log fallback for reset emails.
 
 ---
