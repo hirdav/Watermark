@@ -27,7 +27,14 @@ export default async function ForgotPasswordPage({
       const proto = h.get("x-forwarded-proto") ?? "https";
       const resetUrl = `${proto}://${host}/reset-password/${token}`;
       const { subject, html, text } = passwordResetEmail(resetUrl);
-      await sendMail({ to: email, subject, html, text });
+      try {
+        await sendMail({ to: email, subject, html, text });
+      } catch (err) {
+        // Don't let a mail-provider failure surface as a crash or leak
+        // whether the account exists — log it and fall through to the
+        // same generic success message.
+        console.error("[forgot-password] sendMail failed:", err);
+      }
     }
 
     // Always show the same message, whether or not the account exists,

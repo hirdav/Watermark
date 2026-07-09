@@ -8,9 +8,9 @@ export const metadata = { title: "Contact — Proof" };
 export default async function ContactPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sent?: string }>;
+  searchParams: Promise<{ sent?: string; error?: string }>;
 }) {
-  const { sent } = await searchParams;
+  const { sent, error } = await searchParams;
 
   async function sendContactAction(formData: FormData) {
     "use server";
@@ -20,12 +20,17 @@ export default async function ContactPage({
     if (!name || !email || !message) redirect("/contact");
 
     const to = process.env.CONTACT_EMAIL || "hello@proof.app";
-    await sendMail({
-      to,
-      subject: `Contact form: ${name}`,
-      text: `From: ${name} <${email}>\n\n${message}`,
-      html: `<p><strong>From:</strong> ${name} &lt;${email}&gt;</p><p>${message.replace(/\n/g, "<br/>")}</p>`,
-    });
+    try {
+      await sendMail({
+        to,
+        subject: `Contact form: ${name}`,
+        text: `From: ${name} <${email}>\n\n${message}`,
+        html: `<p><strong>From:</strong> ${name} &lt;${email}&gt;</p><p>${message.replace(/\n/g, "<br/>")}</p>`,
+      });
+    } catch (err) {
+      console.error("[contact] sendMail failed:", err);
+      redirect("/contact?error=1");
+    }
 
     redirect("/contact?sent=1");
   }
@@ -43,6 +48,11 @@ export default async function ContactPage({
         </div>
       ) : (
         <form action={sendContactAction} className="mt-8 flex flex-col gap-4">
+          {error && (
+            <FormMessage kind="error">
+              Something went wrong sending your message. Please try again in a moment.
+            </FormMessage>
+          )}
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
               Name
