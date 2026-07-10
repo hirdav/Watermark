@@ -18,7 +18,7 @@ export default async function PricingPage() {
         <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl dark:text-zinc-50">
           Simple, honest pricing
         </h1>
-        <p className="mt-3 text-zinc-500">Start free. Upgrade when you need your own logo, more images, or more shoots.</p>
+        <p className="mt-3 text-zinc-500">Start free. Upgrade when you need your own logo, more images, or more projects.</p>
       </div>
 
       <div className="mt-12 grid gap-6 sm:grid-cols-3">
@@ -51,7 +51,7 @@ export default async function PricingPage() {
 
               <ul className="mt-5 flex-1 space-y-2.5 text-sm text-zinc-600 dark:text-zinc-400">
                 {[
-                  `${plan.maxShoots === Infinity ? "Unlimited" : plan.maxShoots} active shoot${plan.maxShoots === 1 ? "" : "s"}`,
+                  `${plan.maxProjects === Infinity ? "Unlimited" : plan.maxProjects} active project${plan.maxProjects === 1 ? "" : "s"}`,
                   `${plan.maxImagesPerMonth === Infinity ? "Unlimited" : plan.maxImagesPerMonth} images / month`,
                   plan.customWatermark ? "Your own logo or text watermark" : "Default watermark",
                   plan.customWatermark ? "Full placement control + saved templates" : "Fixed placement",

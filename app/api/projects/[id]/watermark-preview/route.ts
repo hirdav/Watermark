@@ -8,8 +8,8 @@ import { applyWatermark } from "@/lib/watermark";
 import { parseWatermarkFields } from "@/lib/watermark-form";
 import { resolveLogoBuffer } from "@/lib/watermark-logo";
 
-async function sampleBaseImage(shootId: string): Promise<Buffer> {
-  const image = await prisma.image.findFirst({ where: { shootId }, orderBy: { createdAt: "desc" } });
+async function sampleBaseImage(projectId: string): Promise<Buffer> {
+  const image = await prisma.image.findFirst({ where: { projectId }, orderBy: { createdAt: "desc" } });
   if (image) {
     return readFileFromStorage(image.originalPath);
   }
@@ -21,12 +21,12 @@ async function sampleBaseImage(shootId: string): Promise<Buffer> {
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id: shootId } = await params;
+  const { id: projectId } = await params;
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const shoot = await prisma.shoot.findUnique({ where: { id: shootId } });
-  if (!shoot || shoot.userId !== session.user.id) {
+  const project = await prisma.project.findUnique({ where: { id: projectId } });
+  if (!project || project.userId !== session.user.id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -43,14 +43,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     userId: user.id,
     logoFile: fields.logoFile,
     templateId: fields.templateId,
-    shootLogoPath: shoot.watermarkLogoPath,
+    projectLogoPath: project.watermarkLogoPath,
   });
 
   if (fields.type === "logo" && !logo) {
     return NextResponse.json({ error: "Upload a transparent PNG logo first." }, { status: 400 });
   }
 
-  const base = await sampleBaseImage(shootId);
+  const base = await sampleBaseImage(projectId);
   const { buffer, format } = await applyWatermark(base, {
     type: fields.type,
     text: fields.text,

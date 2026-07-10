@@ -48,17 +48,17 @@ export async function POST(req: Request) {
   const name = String(form.get("name") ?? "").trim();
   if (!name) return NextResponse.json({ error: "Template name is required" }, { status: 400 });
 
-  // Logo source priority: uploaded file, another template's logo, the given shoot's saved logo.
+  // Logo source priority: uploaded file, another template's logo, the given project's saved logo.
   let logo: Buffer | undefined;
   if (fields.type === "logo") {
-    const shootIdRaw = form.get("shootId");
-    const shootId = typeof shootIdRaw === "string" && shootIdRaw ? shootIdRaw : null;
-    const shoot = shootId ? await prisma.shoot.findUnique({ where: { id: shootId } }) : null;
+    const projectIdRaw = form.get("projectId");
+    const projectId = typeof projectIdRaw === "string" && projectIdRaw ? projectIdRaw : null;
+    const project = projectId ? await prisma.project.findUnique({ where: { id: projectId } }) : null;
     logo = await resolveLogoBuffer({
       userId: user.id,
       logoFile: fields.logoFile,
       templateId: fields.templateId,
-      shootLogoPath: shoot && shoot.userId === user.id ? shoot.watermarkLogoPath : null,
+      projectLogoPath: project && project.userId === user.id ? project.watermarkLogoPath : null,
     });
     if (!logo) return NextResponse.json({ error: "Upload a transparent PNG logo first." }, { status: 400 });
   }

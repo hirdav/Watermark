@@ -5,13 +5,13 @@ import { Logo } from "@/components/site/Logo";
 export default async function GalleryPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
 
-  const shoot = await prisma.shoot.findUnique({
+  const project = await prisma.project.findUnique({
     where: { shareToken: token },
     include: { images: { orderBy: { createdAt: "desc" } } },
   });
-  if (!shoot) notFound();
+  if (!project) notFound();
 
-  const favoriteCount = shoot.images.filter((i) => i.selected).length;
+  const favoriteCount = project.images.filter((i) => i.selected).length;
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
@@ -22,7 +22,7 @@ export default async function GalleryPage({ params }: { params: Promise<{ token:
       </header>
 
       <div className="mx-auto max-w-5xl px-6 py-10">
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">{shoot.title}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">{project.title}</h1>
         <p className="mt-1.5 text-sm text-zinc-500">
           Tap a photo to mark it as a favorite
           {favoriteCount > 0 && (
@@ -35,7 +35,7 @@ export default async function GalleryPage({ params }: { params: Promise<{ token:
         </p>
 
         <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-          {shoot.images.map((image) => (
+          {project.images.map((image) => (
             <div
               key={image.id}
               className={`group overflow-hidden rounded-xl border bg-white shadow-sm transition-all dark:bg-zinc-900 ${
@@ -76,7 +76,7 @@ export default async function GalleryPage({ params }: { params: Promise<{ token:
           ))}
         </div>
 
-        {shoot.images.length === 0 && (
+        {project.images.length === 0 && (
           <div className="mt-16 flex flex-col items-center gap-3 text-center">
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
               <svg className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -88,7 +88,7 @@ export default async function GalleryPage({ params }: { params: Promise<{ token:
               </svg>
             </span>
             <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">No photos yet</p>
-            <p className="text-sm text-zinc-500">Check back once the photographer uploads this shoot.</p>
+            <p className="text-sm text-zinc-500">Check back once the photographer uploads this project.</p>
           </div>
         )}
       </div>

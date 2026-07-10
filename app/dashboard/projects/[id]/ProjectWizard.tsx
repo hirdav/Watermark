@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Banner } from "@/components/ui/Banner";
+import { PricingModal } from "@/components/ui/PricingModal";
 
 const SINGLE_POSITIONS = [
   ["TOP_LEFT", "Top left"],
@@ -38,8 +39,8 @@ export interface ImageDto {
   selected: boolean;
 }
 
-interface ShootWizardProps {
-  shootId: string;
+interface ProjectWizardProps {
+  projectId: string;
   allowed: boolean;
   templates: TemplateDto[];
   images: ImageDto[];
@@ -80,9 +81,31 @@ const secondaryBtn =
 const cardCls =
   "w-full rounded-xl border border-zinc-300 p-5 text-left shadow-sm transition-all hover:border-zinc-500 hover:shadow-md dark:border-zinc-700 dark:hover:border-zinc-400";
 
-export function ShootWizard({ shootId, allowed, templates: initialTemplates, images, initial }: ShootWizardProps) {
+function ProBadge() {
+  return (
+    <span className="inline-flex items-center rounded-full bg-gradient-to-r from-amber-500 to-amber-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+      Pro
+    </span>
+  );
+}
+
+/** Invisible full-cover button that intercepts clicks on a locked control and opens the upgrade modal instead. */
+function LockOverlay({ onClick, label = "Upgrade to unlock" }: { onClick: () => void; label?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className="absolute inset-0 z-10 cursor-pointer rounded-[inherit]"
+    />
+  );
+}
+
+export function ProjectWizard({ projectId, allowed, templates: initialTemplates, images, initial }: ProjectWizardProps) {
   const router = useRouter();
   const [step, setStep] = useState(images.length > 0 ? 4 : 1);
+  const [pricingModalOpen, setPricingModalOpen] = useState(false);
+  const openUpgrade = useCallback(() => setPricingModalOpen(true), []);
 
   // Watermark state
   const [type, setType] = useState<"TEXT" | "LOGO">(initial.type);
@@ -138,7 +161,7 @@ export function ShootWizard({ shootId, allowed, templates: initialTemplates, ima
     debounceRef.current = setTimeout(async () => {
       setPreviewLoading(true);
       try {
-        const res = await fetch(`/api/shoots/${shootId}/watermark-preview`, {
+        const res = await fetch(`/api/projects/${projectId}/watermark-preview`, {
           method: "POST",
           body: buildFormData(),
         });
@@ -155,9 +178,13 @@ export function ShootWizard({ shootId, allowed, templates: initialTemplates, ima
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [allowed, step, shootId, buildFormData, type, hasLogoSource]);
+  }, [allowed, step, projectId, buildFormData, type, hasLogoSource]);
 
   function applyTemplate(t: TemplateDto) {
+    if (!allowed) {
+      openUpgrade();
+      return;
+    }
     setType(t.type);
     setText(t.text);
     setMode(t.mode === "TILED" ? "tiled" : "single");
@@ -175,11 +202,15 @@ export function ShootWizard({ shootId, allowed, templates: initialTemplates, ima
   }
 
   async function saveTemplate() {
+    if (!allowed) {
+      openUpgrade();
+      return;
+    }
     const name = window.prompt("Template name (e.g. “Studio logo, bottom right”):");
     if (!name?.trim()) return;
     const fd = buildFormData();
     fd.set("name", name.trim());
-    fd.set("shootId", shootId);
+    fd.set("projectId", projectId);
     const res = await fetch("/api/watermark-templates", { method: "POST", body: fd });
     const body = await res.json();
     if (!res.ok) {
@@ -198,8 +229,12 @@ export function ShootWizard({ shootId, allowed, templates: initialTemplates, ima
   }
 
   async function saveConfigAndContinue() {
+    if (!allowed) {
+      openUpgrade();
+      return;
+    }
     setNotice(null);
-    const res = await fetch(`/api/shoots/${shootId}/watermark-config`, {
+    const res = await fetch(`/api/projects/${projectId}/watermark-config`, {
       method: "POST",
       body: buildFormData(),
     });
@@ -226,7 +261,7 @@ export function ShootWizard({ shootId, allowed, templates: initialTemplates, ima
     try {
       const fd = new FormData();
       for (const f of files) fd.append("files", f);
-      const res = await fetch(`/api/shoots/${shootId}/upload`, { method: "POST", body: fd });
+      const res = await fetch(`/api/projects/${projectId}/upload`, { method: "POST", body: fd });
       const body = await res.json();
       if (!res.ok || body.error) {
         setNotice({ kind: "error", text: body.error ?? "Upload failed" });
@@ -245,21 +280,27 @@ export function ShootWizard({ shootId, allowed, templates: initialTemplates, ima
   }
 
   function handlePreviewClick(e: React.MouseEvent<HTMLImageElement>) {
-    if (position !== "CUSTOM" || mode !== "single") return;
+    if (!allowed || position !== "CUSTOM" || mode !== "single") return;
     const rect = e.currentTarget.getBoundingClientRect();
     setPosX(Math.round(((e.clientX - rect.left) / rect.width) * 100));
     setPosY(Math.round(((e.clientY - rect.top) / rect.height) * 100));
   }
 
   function canVisit(n: number) {
-    if (n === 1) return true;
-    if (n === 2) return allowed;
     if (n === 3) return true;
-    return images.length > 0;
+    if (n === 4) return images.length > 0;
+    return true;
   }
 
   return (
     <div className="mt-6">
+      <PricingModal
+        open={pricingModalOpen}
+        onClose={() => setPricingModalOpen(false)}
+        currentPlan={allowed ? undefined : "FREE"}
+        reason="Custom watermarks — your own logo or text, full placement control, and saved templates — are available on Pro and Studio."
+      />
+
       {/* Stepper */}
       <ol className="flex items-center gap-1 text-xs sm:gap-2">
         {STEPS.map((s, i) => (
@@ -298,211 +339,266 @@ export function ShootWizard({ shootId, allowed, templates: initialTemplates, ima
       {step === 1 && (
         <div className="mt-6">
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Choose your watermark</h2>
-          {!allowed ? (
-            <div className="mt-4 rounded-lg border border-dashed border-zinc-300 p-5 text-sm text-zinc-500 dark:border-zinc-700">
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="relative">
+              {!allowed && <LockOverlay onClick={openUpgrade} />}
+              <button
+                type="button"
+                className={`${cardCls} ${!allowed ? "opacity-60" : ""}`}
+                onClick={() => {
+                  setType("TEXT");
+                  setTemplateId(null);
+                  setStep(2);
+                }}
+              >
+                <span className="flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+                  Text watermark
+                  {!allowed && <ProBadge />}
+                </span>
+                <p className="mt-1 text-sm text-zinc-500">Your studio name or any text, styled and placed how you like.</p>
+              </button>
+            </div>
+            <div className="relative">
+              {!allowed && <LockOverlay onClick={openUpgrade} />}
+              <button
+                type="button"
+                className={`${cardCls} ${!allowed ? "opacity-60" : ""}`}
+                onClick={() => {
+                  setType("LOGO");
+                  setStep(2);
+                }}
+              >
+                <span className="flex items-center gap-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
+                  PNG logo
+                  {!allowed && <ProBadge />}
+                </span>
+                <p className="mt-1 text-sm text-zinc-500">Upload a transparent PNG of your logo.</p>
+              </button>
+            </div>
+          </div>
+
+          {templates.length > 0 && (
+            <div className="mt-5">
+              <h3 className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                Or pick a saved template
+                {!allowed && <ProBadge />}
+              </h3>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {templates.map((t) => (
+                  <span
+                    key={t.id}
+                    className={`inline-flex items-center overflow-hidden rounded-full border border-zinc-300 text-xs dark:border-zinc-700 ${
+                      !allowed ? "opacity-60" : ""
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => applyTemplate(t)}
+                      className="px-3 py-1.5 font-medium text-zinc-900 hover:bg-zinc-100 dark:text-zinc-50 dark:hover:bg-zinc-800"
+                    >
+                      {t.name}
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Delete template ${t.name}`}
+                      onClick={() => deleteTemplate(t.id)}
+                      className="border-l border-zinc-300 px-2 py-1.5 text-zinc-400 hover:text-red-600 dark:border-zinc-700"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!allowed && (
+            <div className="mt-5 rounded-lg border border-dashed border-zinc-300 p-5 text-sm text-zinc-500 dark:border-zinc-700">
               <p>
                 On the Free plan your photos get the default <strong>PROOF</strong> watermark.{" "}
-                <a href="/pricing" className="underline">
+                <button type="button" onClick={openUpgrade} className="underline">
                   Upgrade to Pro or Studio
-                </a>{" "}
+                </button>{" "}
                 to use your own logo or text with full customization and templates.
               </p>
               <button type="button" onClick={() => setStep(3)} className={`${primaryBtn} mt-4`}>
                 Continue with the default watermark →
               </button>
             </div>
-          ) : (
-            <>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <button
-                  type="button"
-                  className={cardCls}
-                  onClick={() => {
-                    setType("TEXT");
-                    setTemplateId(null);
-                    setStep(2);
-                  }}
-                >
-                  <span className="text-base font-semibold text-zinc-900 dark:text-zinc-50">Text watermark</span>
-                  <p className="mt-1 text-sm text-zinc-500">Your studio name or any text, styled and placed how you like.</p>
-                </button>
-                <button
-                  type="button"
-                  className={cardCls}
-                  onClick={() => {
-                    setType("LOGO");
-                    setStep(2);
-                  }}
-                >
-                  <span className="text-base font-semibold text-zinc-900 dark:text-zinc-50">PNG logo</span>
-                  <p className="mt-1 text-sm text-zinc-500">Upload a transparent PNG of your logo.</p>
-                </button>
-              </div>
-
-              {templates.length > 0 && (
-                <div className="mt-5">
-                  <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Or pick a saved template</h3>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {templates.map((t) => (
-                      <span key={t.id} className="inline-flex items-center overflow-hidden rounded-full border border-zinc-300 text-xs dark:border-zinc-700">
-                        <button
-                          type="button"
-                          onClick={() => applyTemplate(t)}
-                          className="px-3 py-1.5 font-medium text-zinc-900 hover:bg-zinc-100 dark:text-zinc-50 dark:hover:bg-zinc-800"
-                        >
-                          {t.name}
-                        </button>
-                        <button
-                          type="button"
-                          aria-label={`Delete template ${t.name}`}
-                          onClick={() => deleteTemplate(t.id)}
-                          className="border-l border-zinc-300 px-2 py-1.5 text-zinc-400 hover:text-red-600 dark:border-zinc-700"
-                        >
-                          ✕
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
           )}
         </div>
       )}
 
       {/* Step 2 — customize */}
-      {step === 2 && allowed && (
+      {step === 2 && (
         <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
           <div>
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Customize the watermark</h2>
 
             {type === "TEXT" ? (
-              <input
-                type="text"
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder="Watermark text"
-                className={`${inputCls} mt-3`}
-              />
+              <div className="relative mt-3">
+                {!allowed && <LockOverlay onClick={openUpgrade} />}
+                <input
+                  type="text"
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder="Watermark text"
+                  disabled={!allowed}
+                  className={`${inputCls} ${!allowed ? "opacity-60" : ""}`}
+                />
+              </div>
             ) : (
-              <div className="mt-3 text-sm">
+              <div className="relative mt-3 text-sm">
+                {!allowed && <LockOverlay onClick={openUpgrade} />}
                 <input
                   type="file"
                   accept="image/png"
+                  disabled={!allowed}
                   onChange={(e) => {
                     setLogoFile(e.target.files?.[0] ?? null);
                   }}
-                  className="text-sm"
+                  className={`text-sm ${!allowed ? "opacity-60" : ""}`}
                 />
-                {!logoFile && (templateId || initial.hasLogo) && (
+                {allowed && !logoFile && (templateId || initial.hasLogo) && (
                   <p className="mt-1 text-xs text-zinc-500">
                     Using the {templateId ? "template’s" : "previously saved"} logo — pick a file only to replace it.
                   </p>
                 )}
-                {!hasLogoSource && <p className="mt-1 text-xs text-amber-600">Upload a transparent PNG to continue.</p>}
+                {allowed && !hasLogoSource && <p className="mt-1 text-xs text-amber-600">Upload a transparent PNG to continue.</p>}
               </div>
             )}
 
-            <div className="mt-5">
-              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Placement</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className={chipCls(mode === "tiled" && rotation !== 0)}
-                  onClick={() => {
-                    setMode("tiled");
-                    setRotation(-30);
-                  }}
-                >
-                  Diagonal pattern
-                </button>
-                <button
-                  type="button"
-                  className={chipCls(mode === "tiled" && rotation === 0)}
-                  onClick={() => {
-                    setMode("tiled");
-                    setRotation(0);
-                  }}
-                >
-                  Repeat grid
-                </button>
-                <button
-                  type="button"
-                  className={chipCls(mode === "single" && position === "CUSTOM")}
-                  onClick={() => {
-                    setMode("single");
-                    setPosition("CUSTOM");
-                  }}
-                >
-                  Custom (click the preview)
-                </button>
-              </div>
-              <div className="mt-2 grid w-fit grid-cols-3 gap-1">
-                {SINGLE_POSITIONS.map(([value, label]) => (
+            <div className="relative mt-5">
+              {!allowed && <LockOverlay onClick={openUpgrade} />}
+              <div className={!allowed ? "opacity-60" : ""}>
+                <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                  Placement
+                  {!allowed && <ProBadge />}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
                   <button
-                    key={value}
                     type="button"
-                    title={label}
-                    aria-label={label}
+                    className={chipCls(mode === "tiled" && rotation !== 0)}
+                    onClick={() => {
+                      setMode("tiled");
+                      setRotation(-30);
+                    }}
+                  >
+                    Diagonal pattern
+                  </button>
+                  <button
+                    type="button"
+                    className={chipCls(mode === "tiled" && rotation === 0)}
+                    onClick={() => {
+                      setMode("tiled");
+                      setRotation(0);
+                    }}
+                  >
+                    Repeat grid
+                  </button>
+                  <button
+                    type="button"
+                    className={chipCls(mode === "single" && position === "CUSTOM")}
                     onClick={() => {
                       setMode("single");
-                      setPosition(value);
+                      setPosition("CUSTOM");
                     }}
-                    className={`h-8 w-8 rounded-md border text-[10px] ${
-                      mode === "single" && position === value
-                        ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-900"
-                        : "border-zinc-300 text-zinc-400 hover:border-zinc-500 dark:border-zinc-700"
-                    }`}
                   >
-                    ●
+                    Custom (click the preview)
                   </button>
-                ))}
+                </div>
+                <div className="mt-2 grid w-fit grid-cols-3 gap-1">
+                  {SINGLE_POSITIONS.map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      title={label}
+                      aria-label={label}
+                      onClick={() => {
+                        setMode("single");
+                        setPosition(value);
+                      }}
+                      className={`h-8 w-8 rounded-md border text-[10px] ${
+                        mode === "single" && position === value
+                          ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-900"
+                          : "border-zinc-300 text-zinc-400 hover:border-zinc-500 dark:border-zinc-700"
+                      }`}
+                    >
+                      ●
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-4">
-              <label className="text-xs text-zinc-500">
-                Size ({size}%)
-                <input type="range" min={5} max={80} value={size} onChange={(e) => setSize(Number(e.target.value))} className="mt-2 w-full" />
-              </label>
-              <label className="text-xs text-zinc-500">
-                Opacity ({opacity}%)
-                <input type="range" min={5} max={100} value={opacity} onChange={(e) => setOpacity(Number(e.target.value))} className="mt-2 w-full" />
-              </label>
-              <label className="text-xs text-zinc-500">
-                Rotation ({rotation}°)
-                <input type="range" min={-180} max={180} value={rotation} onChange={(e) => setRotation(Number(e.target.value))} className="mt-2 w-full" />
-              </label>
-              <label className="text-xs text-zinc-500">
-                {mode === "tiled" ? "Spacing" : "Margin from edge"} ({margin}%)
-                <input type="range" min={0} max={20} value={margin} onChange={(e) => setMargin(Number(e.target.value))} className="mt-2 w-full" />
-              </label>
+            <div className="relative mt-5">
+              {!allowed && <LockOverlay onClick={openUpgrade} />}
+              <div className={`grid grid-cols-2 gap-4 ${!allowed ? "opacity-60" : ""}`}>
+                <label className="text-xs text-zinc-500">
+                  Size ({size}%)
+                  <input type="range" min={5} max={80} value={size} onChange={(e) => setSize(Number(e.target.value))} className="mt-2 w-full" />
+                </label>
+                <label className="text-xs text-zinc-500">
+                  Opacity ({opacity}%)
+                  <input type="range" min={5} max={100} value={opacity} onChange={(e) => setOpacity(Number(e.target.value))} className="mt-2 w-full" />
+                </label>
+                <label className="text-xs text-zinc-500">
+                  Rotation ({rotation}°)
+                  <input type="range" min={-180} max={180} value={rotation} onChange={(e) => setRotation(Number(e.target.value))} className="mt-2 w-full" />
+                </label>
+                <label className="text-xs text-zinc-500">
+                  {mode === "tiled" ? "Spacing" : "Margin from edge"} ({margin}%)
+                  <input type="range" min={0} max={20} value={margin} onChange={(e) => setMargin(Number(e.target.value))} className="mt-2 w-full" />
+                </label>
+              </div>
             </div>
 
             <div className="mt-6 flex flex-wrap gap-2">
               <button type="button" onClick={() => setStep(1)} className={secondaryBtn}>
                 ← Back
               </button>
-              <button type="button" onClick={saveTemplate} className={secondaryBtn} disabled={type === "LOGO" && !hasLogoSource}>
-                Save as template
-              </button>
-              <button
-                type="button"
-                onClick={saveConfigAndContinue}
-                className={primaryBtn}
-                disabled={type === "LOGO" && !hasLogoSource}
-              >
-                Save &amp; continue →
-              </button>
+              {allowed ? (
+                <>
+                  <button type="button" onClick={saveTemplate} className={secondaryBtn} disabled={type === "LOGO" && !hasLogoSource}>
+                    Save as template
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveConfigAndContinue}
+                    className={primaryBtn}
+                    disabled={type === "LOGO" && !hasLogoSource}
+                  >
+                    Save &amp; continue →
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button type="button" onClick={() => setStep(3)} className={secondaryBtn}>
+                    Skip — use default watermark →
+                  </button>
+                  <button type="button" onClick={openUpgrade} className={`${primaryBtn} inline-flex items-center gap-1.5`}>
+                    Upgrade to customize <ProBadge />
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-              Live preview{position === "CUSTOM" && mode === "single" ? " — click to place the watermark" : ""}
+              Live preview{allowed && position === "CUSTOM" && mode === "single" ? " — click to place the watermark" : ""}
             </p>
-            <div className="mt-2 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900">
-              {previewUrl ? (
+            <div className="relative mt-2 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900">
+              {!allowed ? (
+                <div className="flex flex-col items-center gap-3 p-10 text-center">
+                  <ProBadge />
+                  <p className="text-sm text-zinc-500">Live preview is available on Pro &amp; Studio.</p>
+                  <button type="button" onClick={openUpgrade} className={primaryBtn}>
+                    Upgrade to preview
+                  </button>
+                </div>
+              ) : previewUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={previewUrl}
@@ -516,7 +612,7 @@ export function ShootWizard({ shootId, allowed, templates: initialTemplates, ima
                 </p>
               )}
             </div>
-            {previewLoading && previewUrl && <p className="mt-1 text-xs text-zinc-400">Updating…</p>}
+            {allowed && previewLoading && previewUrl && <p className="mt-1 text-xs text-zinc-400">Updating…</p>}
           </div>
         </div>
       )}
@@ -579,7 +675,7 @@ export function ShootWizard({ shootId, allowed, templates: initialTemplates, ima
           )}
 
           <div className="mt-5 flex flex-wrap gap-2">
-            <button type="button" onClick={() => setStep(allowed ? 2 : 1)} className={secondaryBtn}>
+            <button type="button" onClick={() => setStep(2)} className={secondaryBtn}>
               ← Back
             </button>
             <button type="button" onClick={uploadFiles} disabled={files.length === 0 || uploading} className={primaryBtn}>
@@ -602,12 +698,10 @@ export function ShootWizard({ shootId, allowed, templates: initialTemplates, ima
               <button type="button" onClick={() => setStep(3)} className={secondaryBtn}>
                 + Upload more
               </button>
-              {allowed && (
-                <button type="button" onClick={() => setStep(2)} className={secondaryBtn}>
-                  Adjust watermark
-                </button>
-              )}
-              <a href={`/api/shoots/${shootId}/download`} className={primaryBtn}>
+              <button type="button" onClick={() => setStep(2)} className={secondaryBtn}>
+                Adjust watermark
+              </button>
+              <a href={`/api/projects/${projectId}/download`} className={primaryBtn}>
                 Download all (.zip)
               </a>
             </div>
@@ -615,7 +709,7 @@ export function ShootWizard({ shootId, allowed, templates: initialTemplates, ima
 
           {images.some((i) => i.selected) && (
             <a
-              href={`/api/shoots/${shootId}/download-selected`}
+              href={`/api/projects/${projectId}/download-selected`}
               className="mt-3 inline-block text-sm font-medium text-zinc-900 underline dark:text-zinc-50"
             >
               Download client-selected photos (clean originals)

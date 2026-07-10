@@ -7,12 +7,12 @@ export async function GET() {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const shoots = await prisma.shoot.findMany({
+  const projects = await prisma.project.findMany({
     where: { userId: session.user.id },
     orderBy: { createdAt: "desc" },
     include: { _count: { select: { images: true } } },
   });
-  return NextResponse.json(shoots);
+  return NextResponse.json(projects);
 }
 
 export async function POST(req: Request) {
@@ -27,16 +27,16 @@ export async function POST(req: Request) {
 
   const user = await prisma.user.findUniqueOrThrow({ where: { id: session.user.id } });
   const planConfig = PLANS[user.plan];
-  const shootCount = await prisma.shoot.count({ where: { userId: user.id } });
-  if (shootCount >= planConfig.maxShoots) {
+  const projectCount = await prisma.project.count({ where: { userId: user.id } });
+  if (projectCount >= planConfig.maxProjects) {
     return NextResponse.json(
       {
-        error: `Your ${planConfig.label} plan allows up to ${planConfig.maxShoots} active shoot(s). Upgrade to create more.`,
+        error: `Your ${planConfig.label} plan allows up to ${planConfig.maxProjects} active project(s). Upgrade to create more.`,
       },
       { status: 403 }
     );
   }
 
-  const shoot = await prisma.shoot.create({ data: { userId: user.id, title } });
-  return NextResponse.json(shoot, { status: 201 });
+  const project = await prisma.project.create({ data: { userId: user.id, title } });
+  return NextResponse.json(project, { status: 201 });
 }

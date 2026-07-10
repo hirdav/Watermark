@@ -17,13 +17,13 @@ export default async function DashboardPage({
   const user = await prisma.user.findUniqueOrThrow({ where: { id: session.user.id } });
   const planConfig = PLANS[user.plan];
 
-  const shoots = await prisma.shoot.findMany({
+  const projects = await prisma.project.findMany({
     where: { userId: user.id },
     orderBy: { createdAt: "desc" },
     include: { _count: { select: { images: true } } },
   });
 
-  async function createShootAction(formData: FormData) {
+  async function createProjectAction(formData: FormData) {
     "use server";
     const session = await auth();
     if (!session?.user) redirect("/login");
@@ -33,21 +33,21 @@ export default async function DashboardPage({
 
     const user = await prisma.user.findUniqueOrThrow({ where: { id: session.user.id } });
     const planConfig = PLANS[user.plan];
-    const shootCount = await prisma.shoot.count({ where: { userId: user.id } });
-    if (shootCount >= planConfig.maxShoots) {
+    const projectCount = await prisma.project.count({ where: { userId: user.id } });
+    if (projectCount >= planConfig.maxProjects) {
       redirect("/dashboard?error=limit");
     }
 
-    const shoot = await prisma.shoot.create({ data: { userId: user.id, title } });
-    redirect(`/dashboard/shoots/${shoot.id}`);
+    const project = await prisma.project.create({ data: { userId: user.id, title } });
+    redirect(`/dashboard/projects/${project.id}`);
   }
 
   return (
     <div className="mx-auto max-w-3xl">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Your shoots</h1>
-          <p className="mt-1 text-sm text-zinc-500">Create a shoot, watermark it, and share the gallery link.</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Your projects</h1>
+          <p className="mt-1 text-sm text-zinc-500">Create a project, watermark it, and share the gallery link.</p>
         </div>
         <span className="rounded-full bg-zinc-900 px-3 py-1 text-xs font-medium text-white dark:bg-zinc-50 dark:text-zinc-900">
           {planConfig.label} plan
@@ -58,17 +58,17 @@ export default async function DashboardPage({
         {upgraded && <Banner kind="success">You&apos;re now on the {planConfig.label} plan — new limits are active immediately.</Banner>}
         {error === "limit" && (
           <Banner kind="error">
-            Your {planConfig.label} plan allows up to {planConfig.maxShoots} active shoot(s).{" "}
+            Your {planConfig.label} plan allows up to {planConfig.maxProjects} active project(s).{" "}
             <Link href="/pricing" className="font-medium underline">
               Upgrade
             </Link>{" "}
             to create more.
           </Banner>
         )}
-        {error === "title" && <Banner kind="error">Please enter a title for the shoot.</Banner>}
+        {error === "title" && <Banner kind="error">Please enter a title for the project.</Banner>}
       </div>
 
-      <form action={createShootAction} className="mt-6 flex flex-col gap-2 sm:flex-row">
+      <form action={createProjectAction} className="mt-6 flex flex-col gap-2 sm:flex-row">
         <input
           type="text"
           name="title"
@@ -80,21 +80,21 @@ export default async function DashboardPage({
           type="submit"
           className="rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
         >
-          New shoot
+          New project
         </button>
       </form>
 
       <ul className="mt-8 flex flex-col gap-2.5">
-        {shoots.map((shoot) => (
-          <li key={shoot.id}>
+        {projects.map((project) => (
+          <li key={project.id}>
             <Link
-              href={`/dashboard/shoots/${shoot.id}`}
+              href={`/dashboard/projects/${project.id}`}
               className="group flex items-center justify-between gap-4 rounded-xl border border-zinc-200 bg-white px-5 py-4 transition-all hover:border-zinc-300 hover:shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
             >
               <div className="min-w-0">
-                <p className="truncate font-medium text-zinc-900 dark:text-zinc-50">{shoot.title}</p>
+                <p className="truncate font-medium text-zinc-900 dark:text-zinc-50">{project.title}</p>
                 <p className="mt-0.5 text-sm text-zinc-500">
-                  {shoot._count.images} photo{shoot._count.images === 1 ? "" : "s"}
+                  {project._count.images} photo{project._count.images === 1 ? "" : "s"}
                 </p>
               </div>
               <span className="shrink-0 text-sm font-medium text-zinc-400 transition-colors group-hover:text-zinc-900">
@@ -103,7 +103,7 @@ export default async function DashboardPage({
             </Link>
           </li>
         ))}
-        {shoots.length === 0 && (
+        {projects.length === 0 && (
           <li className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-zinc-300 py-14 text-center dark:border-zinc-700">
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
               <svg className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -115,7 +115,7 @@ export default async function DashboardPage({
               </svg>
             </span>
             <div>
-              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">No shoots yet</p>
+              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">No projects yet</p>
               <p className="mt-1 text-sm text-zinc-500">Create your first one above to get a shareable gallery link.</p>
             </div>
           </li>

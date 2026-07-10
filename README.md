@@ -1,6 +1,6 @@
 # Proof — invisible watermark client proofing
 
-Photographers upload a shoot, get a shareable client gallery protected by an invisible,
+Photographers upload a project, get a shareable client gallery protected by an invisible,
 forensic diagonal watermark (only revealed by boosting contrast — e.g. Photoshop Levels).
 Free/Pro/Studio tiers, billed via Razorpay subscriptions.
 
@@ -65,6 +65,6 @@ dev, not for production).
 
 ## Plan limits
 
-Defined in `lib/plans.ts`: Free (1 shoot, 20 images/mo, fixed watermark text), Pro (500
+Defined in `lib/plans.ts`: Free (2 projects, 20 images/mo total, fixed watermark text), Pro (500
 images/mo, custom watermark text), Studio (unlimited). Enforced in
-`app/api/shoots/[id]/upload/route.ts`.
+`app/api/projects/[id]/upload/route.ts`.

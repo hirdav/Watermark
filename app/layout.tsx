@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Proof — watermarked client proofing galleries",
   description:
-    "Upload a shoot, watermark it your way, and share a private gallery link. Clients pick favorites — you deliver clean originals only after they've chosen.",
+    "Upload a project, watermark it your way, and share a private gallery link. Clients pick favorites — you deliver clean originals only after they've chosen.",
 };
 
 export default function RootLayout({

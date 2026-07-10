@@ -9,8 +9,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
     return NextResponse.json({ error: "imageId is required" }, { status: 400 });
   }
 
-  const image = await prisma.image.findUnique({ where: { id: imageId }, include: { shoot: true } });
-  if (!image || image.shoot.shareToken !== token) {
+  const image = await prisma.image.findUnique({ where: { id: imageId }, include: { project: true } });
+  if (!image || image.project.shareToken !== token) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 

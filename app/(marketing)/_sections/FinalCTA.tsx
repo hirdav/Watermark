@@ -10,7 +10,7 @@ export function FinalCTA() {
         </div>
         <div className="relative">
           <h2 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl dark:text-zinc-900">
-            Ready to protect your next shoot?
+            Ready to protect your next project?
           </h2>
           <p className="mx-auto mt-3 max-w-md text-zinc-300 dark:text-zinc-600">
             Set up your first watermarked gallery in a few minutes — free to start, no credit card.

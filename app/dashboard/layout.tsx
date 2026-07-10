@@ -18,7 +18,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <Logo />
             <nav className="hidden items-center gap-5 text-sm font-medium text-zinc-600 sm:flex dark:text-zinc-400">
               <Link href="/dashboard" className="transition-colors hover:text-zinc-900 dark:hover:text-zinc-50">
-                Shoots
+                Projects
               </Link>
               <Link href="/pricing" className="transition-colors hover:text-zinc-900 dark:hover:text-zinc-50">
                 Pricing
@@ -39,7 +39,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </div>
         <nav className="flex items-center gap-5 border-t border-zinc-100 px-6 py-2 text-sm font-medium text-zinc-600 sm:hidden dark:border-zinc-800 dark:text-zinc-400">
           <Link href="/dashboard" className="transition-colors hover:text-zinc-900 dark:hover:text-zinc-50">
-            Shoots
+            Projects
           </Link>
           <Link href="/pricing" className="transition-colors hover:text-zinc-900 dark:hover:text-zinc-50">
             Pricing

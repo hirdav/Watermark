@@ -4,7 +4,7 @@ const USE_CASES = [
       <path d="M4 8a2 2 0 012-2h1.17a2 2 0 001.42-.59l.82-.82A2 2 0 0110.83 4h2.34a2 2 0 011.42.59l.82.82A2 2 0 0016.83 6H18a2 2 0 012 2v8a2 2 0 01-2 2H6a2 2 0 01-2-2V8zm8 2a3 3 0 100 6 3 3 0 000-6z" />
     ),
     title: "Photographers",
-    body: "Wedding, portrait, and event shoots — send proofs same-day without risking full-res leaks.",
+    body: "Wedding, portrait, and event projects — send proofs same-day without risking full-res leaks.",
   },
   {
     icon: (
@@ -36,7 +36,7 @@ const USE_CASES = [
       <path d="M9 6a3 3 0 116 0 3 3 0 01-6 0zM17 6a3 3 0 11-2.83 4H12v-2h2.17A3 3 0 0117 6zM3 6a3 3 0 105.83 2H7v-2H5.83A3 3 0 003 6zm3 8a4 4 0 118 0v2H6v-2zm-4 2v-1.5A3.5 3.5 0 014.5 11H5a5.98 5.98 0 00-1 3v2H2zm16 0v-2a5.98 5.98 0 00-1-3h.5a3.5 3.5 0 013.5 3.5V16h-3z" />
     ),
     title: "Agencies",
-    body: "Manage proofing for multiple clients at once, with per-shoot branding and share links.",
+    body: "Manage proofing for multiple clients at once, with per-project branding and share links.",
   },
 ];
 

@@ -18,7 +18,7 @@ export default function TermsPage() {
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">Plans and billing</h2>
           <p className="mt-2">
             Paid plans renew monthly and can be cancelled at any time; cancelling stops future billing but
-            doesn&apos;t retroactively refund the current period. Plan limits (shoots, images/month, and
+            doesn&apos;t retroactively refund the current period. Plan limits (projects, images/month, and
             customization) are described on the pricing page and enforced automatically.
           </p>
         </section>

@@ -8,8 +8,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ imageId:
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const image = await prisma.image.findUnique({ where: { id: imageId }, include: { shoot: true } });
-  if (!image || image.shoot.userId !== session.user.id) {
+  const image = await prisma.image.findUnique({ where: { id: imageId }, include: { project: true } });
+  if (!image || image.project.userId !== session.user.id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 

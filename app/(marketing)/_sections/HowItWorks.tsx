@@ -2,7 +2,7 @@ const STEPS = [
   {
     n: "01",
     title: "Upload your photos",
-    body: "Drag and drop a whole shoot at once — JPG or PNG, batch upload, no file-by-file busywork.",
+    body: "Drag and drop a whole project at once — JPG or PNG, batch upload, no file-by-file busywork.",
   },
   {
     n: "02",
@@ -22,7 +22,7 @@ export function HowItWorks() {
       <div className="mx-auto max-w-2xl text-center">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-500">How it works</h2>
         <p className="mt-2 text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl dark:text-zinc-50">
-          Three steps from shoot to sign-off
+          Three steps from project to sign-off
         </p>
       </div>
 

@@ -10,7 +10,7 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">What we collect</h2>
           <p className="mt-2">
-            Your account email and name, the photos you upload for watermarking, shoot titles you create, and
+            Your account email and name, the photos you upload for watermarking, project titles you create, and
             billing details processed by our payment provider (we never see or store your card details ourselves).
           </p>
         </section>
@@ -32,7 +32,7 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">Data retention</h2>
           <p className="mt-2">
-            Your photos and shoots are retained for as long as your account is active. You can delete a shoot
+            Your photos and projects are retained for as long as your account is active. You can delete a project
             or your account at any time by contacting us.
           </p>
         </section>

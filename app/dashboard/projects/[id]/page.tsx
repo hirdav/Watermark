@@ -5,30 +5,30 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PLANS, startOfCurrentBillingPeriod } from "@/lib/plans";
 import { CopyButton } from "@/components/ui/CopyButton";
-import { ShootWizard } from "./ShootWizard";
+import { ProjectWizard } from "./ProjectWizard";
 
-export default async function ShootDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const shoot = await prisma.shoot.findUnique({
+  const project = await prisma.project.findUnique({
     where: { id },
     include: { images: { orderBy: { createdAt: "desc" } } },
   });
-  if (!shoot || shoot.userId !== session.user.id) notFound();
+  if (!project || project.userId !== session.user.id) notFound();
 
   const user = await prisma.user.findUniqueOrThrow({ where: { id: session.user.id } });
   const planConfig = PLANS[user.plan];
   const usedThisPeriod = await prisma.image.count({
-    where: { shoot: { userId: user.id }, createdAt: { gte: startOfCurrentBillingPeriod() } },
+    where: { project: { userId: user.id }, createdAt: { gte: startOfCurrentBillingPeriod() } },
   });
   const templates = await prisma.watermarkTemplate.findMany({
     where: { userId: user.id },
     orderBy: { createdAt: "desc" },
   });
 
-  const galleryPath = `/gallery/${shoot.shareToken}`;
+  const galleryPath = `/gallery/${project.shareToken}`;
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host");
   const proto = h.get("x-forwarded-proto") ?? "https";
@@ -48,10 +48,10 @@ export default async function ShootDetailPage({ params }: { params: Promise<{ id
         <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
           <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 010 1.06L9.06 10l3.73 3.71a.75.75 0 11-1.06 1.06l-4.25-4.25a.75.75 0 010-1.06l4.25-4.25a.75.75 0 011.06 0z" clipRule="evenodd" />
         </svg>
-        Shoots
+        Projects
       </Link>
 
-      <h1 className="mt-3 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">{shoot.title}</h1>
+      <h1 className="mt-3 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">{project.title}</h1>
 
       <div className="mt-4 flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm dark:border-zinc-800 dark:bg-zinc-900">
         <span className="shrink-0 font-medium text-zinc-500">Client gallery link</span>
@@ -80,8 +80,8 @@ export default async function ShootDetailPage({ params }: { params: Promise<{ id
         )}
       </div>
 
-      <ShootWizard
-        shootId={shoot.id}
+      <ProjectWizard
+        projectId={project.id}
         allowed={planConfig.customWatermark}
         templates={templates.map((t) => ({
           id: t.id,
@@ -98,23 +98,23 @@ export default async function ShootDetailPage({ params }: { params: Promise<{ id
           rotation: t.rotation,
           marginPct: t.marginPct,
         }))}
-        images={shoot.images.map((image) => ({
+        images={project.images.map((image) => ({
           id: image.id,
           filename: image.filename,
           selected: image.selected,
         }))}
         initial={{
-          type: shoot.watermarkType,
-          text: shoot.watermarkText,
-          hasLogo: !!shoot.watermarkLogoPath,
-          mode: shoot.watermarkMode,
-          position: shoot.watermarkPosition,
-          posX: shoot.watermarkPosXPct,
-          posY: shoot.watermarkPosYPct,
-          sizePercent: shoot.watermarkSizePct,
-          opacityPercent: Math.round(shoot.watermarkOpacity * 100),
-          rotation: shoot.watermarkRotation,
-          marginPercent: shoot.watermarkMarginPct,
+          type: project.watermarkType,
+          text: project.watermarkText,
+          hasLogo: !!project.watermarkLogoPath,
+          mode: project.watermarkMode,
+          position: project.watermarkPosition,
+          posX: project.watermarkPosXPct,
+          posY: project.watermarkPosYPct,
+          sizePercent: project.watermarkSizePct,
+          opacityPercent: Math.round(project.watermarkOpacity * 100),
+          rotation: project.watermarkRotation,
+          marginPercent: project.watermarkMarginPct,
         }}
       />
     </div>

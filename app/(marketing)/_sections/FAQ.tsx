@@ -13,7 +13,7 @@ const FAQS = [
   },
   {
     q: "What's included in the Free plan?",
-    a: "One active shoot and 20 images a month with a default watermark, forever, no credit card required. Pro and Studio raise those limits and unlock your own logo/text, full placement control, and saved templates.",
+    a: "Two active projects and 20 images a month total, with a default watermark, forever, no credit card required. Pro and Studio raise those limits and unlock your own logo/text, full placement control, and saved templates.",
   },
   {
     q: "Can I cancel or change plans anytime?",
@@ -21,7 +21,7 @@ const FAQS = [
   },
   {
     q: "Is my client's data private?",
-    a: "Each shoot gets its own unlisted gallery link. There's no public directory or search — only people you share the link with can view it.",
+    a: "Each project gets its own unlisted gallery link. There's no public directory or search — only people you share the link with can view it.",
   },
 ];
 

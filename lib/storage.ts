@@ -3,16 +3,16 @@ import { dirname, join, resolve } from "path";
 
 const STORAGE_DIR = resolve(process.env.STORAGE_DIR || "./storage");
 
-export function originalPathFor(userId: string, shootId: string, filename: string): string {
-  return join(userId, shootId, "original", filename);
+export function originalPathFor(userId: string, projectId: string, filename: string): string {
+  return join(userId, projectId, "original", filename);
 }
 
-export function watermarkedPathFor(userId: string, shootId: string, filename: string): string {
-  return join(userId, shootId, "watermarked", filename);
+export function watermarkedPathFor(userId: string, projectId: string, filename: string): string {
+  return join(userId, projectId, "watermarked", filename);
 }
 
-export function logoPathFor(userId: string, shootId: string): string {
-  return join(userId, shootId, "watermark-logo.png");
+export function logoPathFor(userId: string, projectId: string): string {
+  return join(userId, projectId, "watermark-logo.png");
 }
 
 export function templateLogoPathFor(userId: string, templateId: string): string {

@@ -2,7 +2,7 @@ export type PlanName = "FREE" | "PRO" | "STUDIO";
 
 export interface PlanConfig {
   label: string;
-  maxShoots: number;
+  maxProjects: number;
   maxImagesPerMonth: number;
   customWatermark: boolean;
   priceINR: number | null;
@@ -12,7 +12,7 @@ export interface PlanConfig {
 export const PLANS: Record<PlanName, PlanConfig> = {
   FREE: {
     label: "Free",
-    maxShoots: 1,
+    maxProjects: 2,
     maxImagesPerMonth: 20,
     customWatermark: false,
     priceINR: null,
@@ -20,7 +20,7 @@ export const PLANS: Record<PlanName, PlanConfig> = {
   },
   PRO: {
     label: "Pro",
-    maxShoots: Infinity,
+    maxProjects: Infinity,
     maxImagesPerMonth: 500,
     customWatermark: true,
     priceINR: 999,
@@ -28,13 +28,16 @@ export const PLANS: Record<PlanName, PlanConfig> = {
   },
   STUDIO: {
     label: "Studio",
-    maxShoots: Infinity,
+    maxProjects: Infinity,
     maxImagesPerMonth: Infinity,
     customWatermark: true,
     priceINR: 2999,
     razorpayPlanId: process.env.RAZORPAY_PLAN_ID_STUDIO || null,
   },
 };
+
+/** Minimum plan required for watermark customization (logo/text, placement, templates). */
+export const CUSTOM_WATERMARK_MIN_PLAN: PlanName = "PRO";
 
 export function startOfCurrentBillingPeriod(): Date {
   const now = new Date();

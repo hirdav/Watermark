@@ -43,7 +43,7 @@ export function Hero() {
             </span>
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-lg text-zinc-600 dark:text-zinc-400">
-            Upload a shoot, watermark it your way, and send clients a private gallery link. They pick
+            Upload a project, watermark it your way, and send clients a private gallery link. They pick
             favorites — you deliver clean, full-quality files only after they&apos;ve chosen.
           </p>
 

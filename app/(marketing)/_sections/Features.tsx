@@ -1,11 +1,11 @@
 const FEATURES = [
-  { title: "Batch upload", body: "Drag and drop an entire shoot at once instead of one file at a time." },
-  { title: "Logo or text watermark", body: "Use a transparent PNG logo or styled text — your choice, per shoot." },
+  { title: "Batch upload", body: "Drag and drop an entire project at once instead of one file at a time." },
+  { title: "Logo or text watermark", body: "Use a transparent PNG logo or styled text — your choice, per project." },
   { title: "Full placement control", body: "Diagonal tiled pattern, repeat grid, 9-point positions, or click-to-place anywhere." },
-  { title: "Saved templates", body: "Save a watermark setup once, apply it to every future shoot in a click." },
-  { title: "Private client galleries", body: "Each shoot gets its own unshared link — no login required for clients." },
+  { title: "Saved templates", body: "Save a watermark setup once, apply it to every future project in a click." },
+  { title: "Private client galleries", body: "Each project gets its own unshared link — no login required for clients." },
   { title: "Favorite & deliver", body: "Clients tap to favorite; you download just those, at full original quality." },
-  { title: "Plan-based limits", body: "Free, Pro, and Studio tiers scale with how many shoots and images you need." },
+  { title: "Plan-based limits", body: "Free, Pro, and Studio tiers scale with how many projects and images you need." },
   { title: "Your images stay yours", body: "Originals and watermarked copies are stored privately, never shared with anyone else." },
 ];
 
