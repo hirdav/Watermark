@@ -267,3 +267,13 @@ Two minor render-time state adjustments in `PhotoViewer` (mount-on-open, zoom-re
 **Verified in prod** (client gallery at `/gallery/cmrby1ra800091mqhrip88rmo`): grid-level favorite toggle updates instantly with the bounce animation and persists across a full page reload; opening the viewer via "View photo" shows the correct image with working prev/next; toggling favorite *from inside the viewer* also updates instantly, and closing the viewer confirms the grid card and the "N favorited" counter both reflect the change immediately — the two surfaces stay in sync since they share the same `toggleFavorite` call and local `images` state.
 
 ---
+
+## 2026-07-10 (later still) — Delete option for watermarked photos
+
+Added `DELETE /api/images/[imageId]` (owner-checked via `image.project.userId`) which removes the `Image` row and both the original and watermarked files from disk (`deleteFileFromStorage`, new helper in `lib/storage.ts`). Wired into `ProjectWizard.tsx`'s step 4: a trash-icon button overlaid on each grid thumbnail, and a red "Delete" action next to "Save original" inside the `PhotoViewer`. Both paths call the same `deleteImage(id)`, which confirms first (`window.confirm` — this is a genuinely irreversible action, unlike the favorite toggle, so no optimistic-then-revert here), then removes the file/row and drops it from local state on success; the viewer closes itself afterward since the item it was showing may no longer exist.
+
+Converting `images` from a plain prop to local `useState` (needed so a delete can update the grid without a full reload) introduced a real risk: the existing "+ Upload more" flow relies on `router.refresh()` re-fetching the server component and handing down a new `images` prop, but a `useState`'s initial value is only read once — later prop changes wouldn't reach already-mounted local state. Fixed with the same render-time-adjustment pattern already used in `PhotoViewer` (compare the incoming prop reference against the last-seen one, resync if different) rather than a `useEffect`.
+
+**Verified in prod** (`test@testing.com`, project "john's bday", 3 photos): deleting via the grid's trash icon removed the photo immediately and the usage counter dropped (4 → 3), confirmed to persist across a full reload; deleting the same way from inside `PhotoViewer` also worked, closing the viewer and leaving the grid at 1 photo (counter 3 → 2). Testing note: the `claude-in-chrome` automation couldn't drive the native `window.confirm()` dialog directly (clicks landed but no request fired, dialog presumably auto-cancelled) — worked around by overriding `window.confirm = () => true` via the page's JS console before clicking, which exercises the exact same code path a real user's "OK" click would.
+
+---
