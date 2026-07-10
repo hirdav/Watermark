@@ -255,3 +255,15 @@ Wizard UX: previously, Free-plan users hit a completely different, stripped-down
 **Verified in prod** (existing paid test account `test@testing.com` and free test account `testphoto+pivot1@example.com`, both pre-dating the rename): old "Shoot" rows correctly appear as Projects with all photos/relations intact after the migration; Free account capped at exactly 2 projects (3rd attempt correctly rejected with the new copy); clicking a locked control (text input, placement section) opens the pricing modal instead of allowing edits; Pro account's step 2 renders fully unlocked with no badges and a working live preview, confirming the plan gate (`customWatermark`) still works correctly post-rename.
 
 ---
+
+## 2026-07-10 (later) — Full-screen photo viewer + optimistic favorites
+
+Added a reusable `PhotoViewer` component (`components/ui/PhotoViewer.tsx`) — a full-screen lightbox shared by both the client gallery (`app/gallery/[token]/GalleryGrid.tsx`, extracted from the gallery page as a client component) and the dashboard's watermarked-photos step (`ProjectWizard.tsx`). No external animation/gesture library: CSS-only fade+scale open/close (class-toggle driven, delayed unmount via `setTimeout` matching the transition duration), prev/next navigation (buttons, arrow keys, and swipe-to-navigate via pointer drag at 1x zoom, with wraparound), double-click and scroll-wheel zoom (native non-passive `wheel` listener so `preventDefault()` works, since React's `onWheel` is passive by default), pointer-drag pan when zoomed in, Escape/backdrop/X to close, and body-scroll lock while open. A `renderActions` slot lets each caller supply its own footer control — a "Save original" download link in the wizard, a favorite-toggle button in the gallery.
+
+Favorite toggling (`GalleryGrid.toggleFavorite`) is now optimistic: local state flips immediately on click, a quick scale/bounce animation plays (`@keyframes favorite-pop` in `globals.css`, applied to both the grid badge and the pill button), and the `POST /api/gallery/[token]/select` request happens in the background — reconciled with the server's actual value on success, reverted on failure. The select route was changed from a redirect-based form response to returning `{ id, selected }` JSON to support this.
+
+Two minor render-time state adjustments in `PhotoViewer` (mount-on-open, zoom-reset-on-index-change) use React's guarded-render-body pattern instead of `useEffect`, to satisfy `react-hooks/set-state-in-effect` — confirmed clean via `tsc --noEmit` and `npm run lint`.
+
+**Verified in prod** (client gallery at `/gallery/cmrby1ra800091mqhrip88rmo`): grid-level favorite toggle updates instantly with the bounce animation and persists across a full page reload; opening the viewer via "View photo" shows the correct image with working prev/next; toggling favorite *from inside the viewer* also updates instantly, and closing the viewer confirms the grid card and the "N favorited" counter both reflect the change immediately — the two surfaces stay in sync since they share the same `toggleFavorite` call and local `images` state.
+
+---
