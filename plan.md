@@ -243,3 +243,15 @@ Resend account created, `mail.edantra.online` domain added and DNS-verified (SPF
 **Verified**: real email delivery confirmed twice — once to the Resend account owner's own inbox (sandbox mode, before domain verification) and once to an arbitrary recipient (`test@testing.com`) after domain verification, both via the actual browser-driven forgot-password flow with no errors logged. The password-reset email pipeline is fully live in production.
 
 ---
+
+## 2026-07-10 — Rename Shoot → Project; expand Free plan; locked-feature UX
+
+Renamed the "Shoot" concept to "Project" everywhere: Prisma model/column (`ALTER TABLE`/`ALTER TABLE ... RENAME COLUMN`, metadata-only in Postgres — instant, zero data loss, confirmed against real prod data), API routes (`/api/shoots` → `/api/projects`), dashboard routes (`/dashboard/shoots` → `/dashboard/projects`), the wizard component (`ShootWizard` → `ProjectWizard`), and all user-facing copy across dashboard, wizard, gallery, and marketing pages.
+
+Free plan: 1 → **2 active projects** (20 images/month total unchanged — that cap already summed across all of a user's projects).
+
+Wizard UX: previously, Free-plan users hit a completely different, stripped-down step 1 with no visibility into what customization looks like. Now every plan sees the *same* full wizard — logo/text choice, saved templates, placement (diagonal/grid/custom/9-grid), size/opacity/rotation/margin — with Pro-gated controls shown greyed out and tagged with a "Pro" badge. An invisible overlay button sits on top of each locked control so clicking it (instead of doing nothing, or worse, silently failing) opens a new `PricingModal` — a self-contained pricing/upgrade dialog (reuses the existing `UpgradeButton`/Razorpay checkout) instead of navigating away. Free users still have a clear, unobstructed path to the actual product (default watermark → upload → download) via "Continue with the default watermark" / "Skip" actions alongside the locked panel.
+
+**Verified in prod** (existing paid test account `test@testing.com` and free test account `testphoto+pivot1@example.com`, both pre-dating the rename): old "Shoot" rows correctly appear as Projects with all photos/relations intact after the migration; Free account capped at exactly 2 projects (3rd attempt correctly rejected with the new copy); clicking a locked control (text input, placement section) opens the pricing modal instead of allowing edits; Pro account's step 2 renders fully unlocked with no badges and a working live preview, confirming the plan gate (`customWatermark`) still works correctly post-rename.
+
+---
