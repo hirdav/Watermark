@@ -102,12 +102,22 @@ function LockOverlay({ onClick, label = "Upgrade to unlock" }: { onClick: () => 
   );
 }
 
-export function ProjectWizard({ projectId, allowed, templates: initialTemplates, images, initial }: ProjectWizardProps) {
+export function ProjectWizard({ projectId, allowed, templates: initialTemplates, images: initialImages, initial }: ProjectWizardProps) {
   const router = useRouter();
+  const [images, setImages] = useState(initialImages);
+  const [lastInitialImages, setLastInitialImages] = useState(initialImages);
+  // Resync when the server hands us fresh data (e.g. after router.refresh()
+  // post-upload) — adjusted during render rather than an Effect, same pattern
+  // as PhotoViewer's index-change reset.
+  if (initialImages !== lastInitialImages) {
+    setLastInitialImages(initialImages);
+    setImages(initialImages);
+  }
   const [step, setStep] = useState(images.length > 0 ? 4 : 1);
   const [pricingModalOpen, setPricingModalOpen] = useState(false);
   const openUpgrade = useCallback(() => setPricingModalOpen(true), []);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Watermark state
   const [type, setType] = useState<"TEXT" | "LOGO">(initial.type);
@@ -228,6 +238,25 @@ export function ProjectWizard({ projectId, allowed, templates: initialTemplates,
     await fetch(`/api/watermark-templates/${id}`, { method: "DELETE" });
     setTemplates((prev) => prev.filter((t) => t.id !== id));
     if (templateId === id) setTemplateId(null);
+  }
+
+  async function deleteImage(id: string) {
+    if (!window.confirm("Delete this photo? This removes both the watermarked copy and the original and can't be undone.")) {
+      return;
+    }
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/images/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        setNotice({ kind: "error", text: "Could not delete photo" });
+        return;
+      }
+      setImages((prev) => prev.filter((img) => img.id !== id));
+      setViewerIndex(null);
+      router.refresh();
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   async function saveConfigAndContinue() {
@@ -724,10 +753,28 @@ export function ProjectWizard({ projectId, allowed, templates: initialTemplates,
                 key={image.id}
                 className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
               >
-                <button type="button" onClick={() => setViewerIndex(i)} className="block w-full cursor-zoom-in" aria-label="View photo">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/api/images/${image.id}`} alt={image.filename} className="aspect-square w-full object-cover" />
-                </button>
+                <div className="relative">
+                  <button type="button" onClick={() => setViewerIndex(i)} className="block w-full cursor-zoom-in" aria-label="View photo">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`/api/images/${image.id}`} alt={image.filename} className="aspect-square w-full object-cover" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deleteImage(image.id)}
+                    disabled={deletingId === image.id}
+                    aria-label="Delete photo"
+                    title="Delete photo"
+                    className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white transition-colors hover:bg-red-600 disabled:opacity-50"
+                  >
+                    <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path
+                        fillRule="evenodd"
+                        d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482 41.03 41.03 0 00-2.365-.298V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </button>
+                </div>
                 <div className="flex items-center justify-between px-2.5 py-1.5 text-xs">
                   <span className="truncate text-zinc-500">{image.filename}</span>
                   <a href={`/api/images/${image.id}`} download={image.filename} className="ml-2 shrink-0 font-medium text-zinc-900 hover:underline dark:text-zinc-50">
@@ -770,13 +817,23 @@ export function ProjectWizard({ projectId, allowed, templates: initialTemplates,
             onClose={() => setViewerIndex(null)}
             onNavigate={setViewerIndex}
             renderActions={(item) => (
-              <a
-                href={item.src}
-                download={item.filename}
-                className="flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-sm font-medium text-white transition-colors hover:bg-white/20"
-              >
-                Save original
-              </a>
+              <>
+                <a
+                  href={item.src}
+                  download={item.filename}
+                  className="flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-sm font-medium text-white transition-colors hover:bg-white/20"
+                >
+                  Save original
+                </a>
+                <button
+                  type="button"
+                  onClick={() => deleteImage(item.id)}
+                  disabled={deletingId === item.id}
+                  className="flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/20 hover:text-red-300 disabled:opacity-50"
+                >
+                  Delete
+                </button>
+              </>
             )}
           />
         </div>

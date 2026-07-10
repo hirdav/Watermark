@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "fs/promises";
+import { mkdir, readFile, writeFile, unlink } from "fs/promises";
 import { dirname, join, resolve } from "path";
 
 const STORAGE_DIR = resolve(process.env.STORAGE_DIR || "./storage");
@@ -27,4 +27,8 @@ export async function saveFile(relativePath: string, data: Buffer): Promise<void
 
 export async function readFileFromStorage(relativePath: string): Promise<Buffer> {
   return readFile(join(STORAGE_DIR, relativePath));
+}
+
+export async function deleteFileFromStorage(relativePath: string): Promise<void> {
+  await unlink(join(STORAGE_DIR, relativePath)).catch(() => {});
 }
