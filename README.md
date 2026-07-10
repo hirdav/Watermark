@@ -41,6 +41,21 @@ dev, not for production).
    subdomain's DNS zone.
 3. Set `MAIL_FROM="Proof <no-reply@mail.yourdomain.com>"` (must use the verified subdomain).
 
+## Google Drive import setup (manual, one-time, optional)
+
+Lets users paste a Drive folder or file link (shared as "Anyone with the link") in the
+upload step, instead of only uploading from disk. Uses an API key rather than OAuth —
+simpler to set up, but only works against publicly-link-shared files, not private ones.
+
+1. Create/select a project in the [Google Cloud Console](https://console.cloud.google.com/).
+2. APIs & Services → Library → enable the **Google Drive API**.
+3. APIs & Services → Credentials → Create Credentials → API key → set `GOOGLE_API_KEY`.
+4. Restrict the key to the Drive API (Credentials → edit the key → API restrictions) since
+   it has no user auth attached to limit its blast radius.
+
+Without this configured, the "Import from Google Drive" field returns a clear error instead
+of silently failing.
+
 ## Razorpay setup (manual, one-time)
 
 1. Create a Razorpay account and switch to **Test Mode**.
@@ -67,4 +82,4 @@ dev, not for production).
 
 Defined in `lib/plans.ts`: Free (2 projects, 20 images/mo total, fixed watermark text), Pro (500
 images/mo, custom watermark text), Studio (unlimited). Enforced in
-`app/api/projects/[id]/upload/route.ts`.
+`lib/upload-pipeline.ts`, shared by both the local-file and Google Drive upload routes.

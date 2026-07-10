@@ -145,6 +145,8 @@ export function ProjectWizard({ projectId, allowed, templates: initialTemplates,
   const [uploading, setUploading] = useState(false);
   const [notice, setNotice] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [driveUrl, setDriveUrl] = useState("");
+  const [importingDrive, setImportingDrive] = useState(false);
 
   const hasLogoSource = !!logoFile || !!templateId || initial.hasLogo;
 
@@ -307,6 +309,33 @@ export function ProjectWizard({ projectId, allowed, templates: initialTemplates,
       setStep(4);
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function importFromDrive() {
+    if (!driveUrl.trim()) return;
+    setImportingDrive(true);
+    setNotice(null);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/import-drive`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: driveUrl.trim() }),
+      });
+      const body = await res.json();
+      if (!res.ok || body.error) {
+        setNotice({ kind: "error", text: body.error ?? "Import failed" });
+        return;
+      }
+      setDriveUrl("");
+      setNotice({
+        kind: "ok",
+        text: `Watermarked ${body.uploaded} photo(s) from Google Drive${body.skipped ? ` — skipped ${body.skipped} unsupported file(s)` : ""}.`,
+      });
+      router.refresh();
+      setStep(4);
+    } finally {
+      setImportingDrive(false);
     }
   }
 
@@ -704,6 +733,38 @@ export function ProjectWizard({ projectId, allowed, templates: initialTemplates,
               ))}
             </ul>
           )}
+
+          <div className="mt-6 flex items-center gap-3 text-xs text-zinc-400">
+            <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
+            or
+            <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
+          </div>
+
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-zinc-900 dark:text-zinc-50">
+              Import from Google Drive
+            </label>
+            <p className="mt-1 text-xs text-zinc-500">
+              Paste a link to a Drive folder or a single photo, shared as “Anyone with the link.”
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <input
+                type="url"
+                value={driveUrl}
+                onChange={(e) => setDriveUrl(e.target.value)}
+                placeholder="https://drive.google.com/drive/folders/…"
+                className="min-w-0 flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+              />
+              <button
+                type="button"
+                onClick={importFromDrive}
+                disabled={!driveUrl.trim() || importingDrive}
+                className={secondaryBtn}
+              >
+                {importingDrive ? "Importing…" : "Import"}
+              </button>
+            </div>
+          </div>
 
           <div className="mt-5 flex flex-wrap gap-2">
             <button type="button" onClick={() => setStep(2)} className={secondaryBtn}>
