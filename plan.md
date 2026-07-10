@@ -277,3 +277,17 @@ Converting `images` from a plain prop to local `useState` (needed so a delete ca
 **Verified in prod** (`test@testing.com`, project "john's bday", 3 photos): deleting via the grid's trash icon removed the photo immediately and the usage counter dropped (4 → 3), confirmed to persist across a full reload; deleting the same way from inside `PhotoViewer` also worked, closing the viewer and leaving the grid at 1 photo (counter 3 → 2). Testing note: the `claude-in-chrome` automation couldn't drive the native `window.confirm()` dialog directly (clicks landed but no request fired, dialog presumably auto-cancelled) — worked around by overriding `window.confirm = () => true` via the page's JS console before clicking, which exercises the exact same code path a real user's "OK" click would.
 
 ---
+
+## 2026-07-10 (night) — Google Drive import in the upload step
+
+Users can now paste a Google Drive link (a folder or a single photo) in step 3 as an alternative to uploading from disk (commit `5ac1510`). Design decision (user chose from options): **share-link + server-side API key**, not OAuth — the user pastes a link shared as "Anyone with the link", and the server talks to the Drive API v3 with a `GOOGLE_API_KEY`. No Google sign-in, no consent screen, no app-verification review; the tradeoff is it can't reach private files.
+
+- `lib/google-drive.ts`: `extractDriveId` handles all common link shapes (`/folders/<id>`, `/file/d/<id>`, `?id=<id>`, bare ID — verified against samples of each), metadata fetch, paginated folder listing (direct children only, `.jpg`/`.png` filtered in the Drive query itself), and `alt=media` download. All errors surface a hint about link-sharing since that's the overwhelmingly likely cause.
+- `lib/upload-pipeline.ts`: the quota-check → watermark-per-project-config → save-original+watermarked → `Image` row pipeline, extracted from the local upload route so both paths share one implementation (`processImageUploads`). Also exposes `getRemainingQuota` so the Drive route can reject an over-quota folder *before* downloading its contents.
+- `app/api/projects/[id]/import-drive/route.ts`: POST `{ url }` → resolves the link, lists images (folder) or validates the single file, preflights quota, downloads, and runs the shared pipeline. Returns the same `{ uploaded, skipped }` shape as the upload route.
+- Wizard step 3 gained an "Import from Google Drive" field + Import button under an "or" divider below the drag-and-drop area, reusing the existing `notice` banner for results/errors.
+- Setup documented in README ("Google Drive import setup") + `.env.example`: enable the Drive API in Google Cloud Console, create an API key, restrict it to the Drive API, set `GOOGLE_API_KEY`.
+
+**Verified in prod**: the field renders correctly in step 3; pasting a folder link and clicking Import POSTs to `/api/projects/[id]/import-drive` and — with `GOOGLE_API_KEY` not yet set on Railway — fails gracefully with a 400 and the banner "Google Drive import isn't configured on this server." (no crash). **Not yet verified: an actual import** — blocked on the one-time manual Google Cloud Console setup (user action), after which a real folder/file import should be clicked through once.
+
+---
