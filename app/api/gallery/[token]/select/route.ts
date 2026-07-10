@@ -14,7 +14,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  await prisma.image.update({ where: { id: imageId }, data: { selected: !image.selected } });
+  const updated = await prisma.image.update({ where: { id: imageId }, data: { selected: !image.selected } });
 
-  return new Response(null, { status: 303, headers: { Location: `/gallery/${token}` } });
+  return NextResponse.json({ id: updated.id, selected: updated.selected });
 }

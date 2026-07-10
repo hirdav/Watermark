@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Banner } from "@/components/ui/Banner";
 import { PricingModal } from "@/components/ui/PricingModal";
+import { PhotoViewer, type PhotoViewerItem } from "@/components/ui/PhotoViewer";
 
 const SINGLE_POSITIONS = [
   ["TOP_LEFT", "Top left"],
@@ -106,6 +107,7 @@ export function ProjectWizard({ projectId, allowed, templates: initialTemplates,
   const [step, setStep] = useState(images.length > 0 ? 4 : 1);
   const [pricingModalOpen, setPricingModalOpen] = useState(false);
   const openUpgrade = useCallback(() => setPricingModalOpen(true), []);
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
   // Watermark state
   const [type, setType] = useState<"TEXT" | "LOGO">(initial.type);
@@ -717,13 +719,15 @@ export function ProjectWizard({ projectId, allowed, templates: initialTemplates,
           )}
 
           <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-            {images.map((image) => (
+            {images.map((image, i) => (
               <div
                 key={image.id}
                 className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`/api/images/${image.id}`} alt={image.filename} className="aspect-square w-full object-cover" />
+                <button type="button" onClick={() => setViewerIndex(i)} className="block w-full cursor-zoom-in" aria-label="View photo">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`/api/images/${image.id}`} alt={image.filename} className="aspect-square w-full object-cover" />
+                </button>
                 <div className="flex items-center justify-between px-2.5 py-1.5 text-xs">
                   <span className="truncate text-zinc-500">{image.filename}</span>
                   <a href={`/api/images/${image.id}`} download={image.filename} className="ml-2 shrink-0 font-medium text-zinc-900 hover:underline dark:text-zinc-50">
@@ -751,6 +755,30 @@ export function ProjectWizard({ projectId, allowed, templates: initialTemplates,
               <p className="text-sm text-zinc-500">Upload some in the previous step.</p>
             </div>
           )}
+
+          <PhotoViewer
+            items={images.map(
+              (image): PhotoViewerItem => ({
+                id: image.id,
+                src: `/api/images/${image.id}`,
+                alt: image.filename,
+                filename: image.filename,
+                selected: image.selected,
+              })
+            )}
+            index={viewerIndex}
+            onClose={() => setViewerIndex(null)}
+            onNavigate={setViewerIndex}
+            renderActions={(item) => (
+              <a
+                href={item.src}
+                download={item.filename}
+                className="flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-sm font-medium text-white transition-colors hover:bg-white/20"
+              >
+                Save original
+              </a>
+            )}
+          />
         </div>
       )}
     </div>

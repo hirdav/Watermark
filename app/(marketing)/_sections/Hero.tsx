@@ -70,7 +70,7 @@ export function Hero() {
               <span className="h-2.5 w-2.5 rounded-full bg-red-300" />
               <span className="h-2.5 w-2.5 rounded-full bg-amber-300" />
               <span className="h-2.5 w-2.5 rounded-full bg-green-300" />
-              <span className="ml-3 text-xs text-zinc-400">proof.app/gallery/sharma-wedding</span>
+              <span className="ml-3 text-xs text-zinc-400">proof.app/gallery/Tajas-Work</span>
             </div>
             <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4">
               <MockGalleryCard hue={210} />
