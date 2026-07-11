@@ -102,6 +102,49 @@ function LockOverlay({ onClick, label = "Upgrade to unlock" }: { onClick: () => 
   );
 }
 
+const LOADING_TIPS = [
+  "Your original files stay untouched and private — only the watermarked copy is ever shared.",
+  "Tip: Save this watermark setup as a template to reuse on your next project in one click.",
+  "Tip: Clients can favorite proofs right from the gallery link — no login required.",
+  "Tip: Once clients pick favorites, download just those — no need to zip everything.",
+  "A diagonal tiled watermark is much harder to crop out than a single corner stamp.",
+  "Good proofs build trust before the sale even happens.",
+];
+
+/** Full-cover overlay with a rotating tip, shown while a slow operation (watermarking a batch) runs. */
+function LoadingOverlay({ active, label }: { active: boolean; label: string }) {
+  const [tipIndex, setTipIndex] = useState(0);
+  const [wasActive, setWasActive] = useState(active);
+
+  // Reset to the first tip each time this transitions to active — adjusted
+  // during render (React's guidance) rather than an Effect.
+  if (active !== wasActive) {
+    setWasActive(active);
+    if (active) setTipIndex(0);
+  }
+
+  useEffect(() => {
+    if (!active) return;
+    const interval = setInterval(() => {
+      setTipIndex((i) => (i + 1) % LOADING_TIPS.length);
+    }, 2800);
+    return () => clearInterval(interval);
+  }, [active]);
+
+  if (!active) return null;
+
+  return (
+    <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 rounded-lg bg-white/95 p-8 text-center backdrop-blur-sm dark:bg-zinc-950/95">
+      <svg className="h-8 w-8 animate-spin text-zinc-900 dark:text-zinc-50" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+      </svg>
+      <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{label}</p>
+      <p className="max-w-sm text-xs text-zinc-500">{LOADING_TIPS[tipIndex]}</p>
+    </div>
+  );
+}
+
 export function ProjectWizard({ projectId, allowed, templates: initialTemplates, images: initialImages, initial }: ProjectWizardProps) {
   const router = useRouter();
   const [images, setImages] = useState(initialImages);
@@ -145,6 +188,7 @@ export function ProjectWizard({ projectId, allowed, templates: initialTemplates,
   const [uploading, setUploading] = useState(false);
   const [notice, setNotice] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const [driveUrl, setDriveUrl] = useState("");
   const [importingDrive, setImportingDrive] = useState(false);
 
@@ -512,18 +556,52 @@ export function ProjectWizard({ projectId, allowed, templates: initialTemplates,
               <div className="relative mt-3 text-sm">
                 {!allowed && <LockOverlay onClick={openUpgrade} />}
                 <input
+                  ref={logoInputRef}
                   type="file"
                   accept="image/png"
                   disabled={!allowed}
                   onChange={(e) => {
                     setLogoFile(e.target.files?.[0] ?? null);
                   }}
-                  className={`text-sm ${!allowed ? "opacity-60" : ""}`}
+                  className="hidden"
                 />
-                {allowed && !logoFile && (templateId || initial.hasLogo) && (
-                  <p className="mt-1 text-xs text-zinc-500">
-                    Using the {templateId ? "template’s" : "previously saved"} logo — pick a file only to replace it.
+                <button
+                  type="button"
+                  onClick={() => logoInputRef.current?.click()}
+                  disabled={!allowed}
+                  className={`${secondaryBtn} ${!allowed ? "opacity-60" : ""}`}
+                >
+                  {logoFile || initial.hasLogo || templateId ? "Choose a different PNG" : "Choose PNG file"}
+                </button>
+                {logoFile ? (
+                  <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-green-700 dark:text-green-500">
+                    <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path
+                        fillRule="evenodd"
+                        d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <span className="truncate">{logoFile.name} selected</span>
+                    <button
+                      type="button"
+                      aria-label="Remove selected logo"
+                      onClick={() => {
+                        setLogoFile(null);
+                        if (logoInputRef.current) logoInputRef.current.value = "";
+                      }}
+                      className="font-normal text-zinc-400 hover:text-red-600"
+                    >
+                      ✕
+                    </button>
                   </p>
+                ) : (
+                  allowed &&
+                  (templateId || initial.hasLogo) && (
+                    <p className="mt-1 text-xs text-zinc-500">
+                      Using the {templateId ? "template’s" : "previously saved"} logo — pick a file only to replace it.
+                    </p>
+                  )
                 )}
                 {allowed && !hasLogoSource && <p className="mt-1 text-xs text-amber-600">Upload a transparent PNG to continue.</p>}
               </div>
@@ -679,7 +757,11 @@ export function ProjectWizard({ projectId, allowed, templates: initialTemplates,
 
       {/* Step 3 — upload */}
       {step === 3 && (
-        <div className="mt-6">
+        <div className="relative mt-6">
+          <LoadingOverlay
+            active={uploading || importingDrive}
+            label={importingDrive ? "Importing from Google Drive…" : "Watermarking your photos…"}
+          />
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Upload your photos</h2>
           <div
             onDragOver={(e) => {
