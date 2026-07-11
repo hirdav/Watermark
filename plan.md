@@ -291,3 +291,17 @@ Users can now paste a Google Drive link (a folder or a single photo) in step 3 a
 **Verified in prod**: the field renders correctly in step 3; pasting a folder link and clicking Import POSTs to `/api/projects/[id]/import-drive` and — with `GOOGLE_API_KEY` not yet set on Railway — fails gracefully with a 400 and the banner "Google Drive import isn't configured on this server." (no crash). **Not yet verified: an actual import** — blocked on the one-time manual Google Cloud Console setup (user action), after which a real folder/file import should be clicked through once.
 
 ---
+
+## 2026-07-11 — Paywall rework using conversion research (commit `0c17bf8`)
+
+User shared a transcript of paywall-conversion research (Mobbin's study of ~3,000 paywalls) and asked to apply it. Adopted the trust-preserving patterns; deliberately skipped the dark ones (fake urgency, countdown discounts, spin-the-wheel, fabricated social proof — the last also being an established convention of this project).
+
+What changed:
+- **`PricingModal`**: rebuilt from three feature-card columns into a **comparison table** (research: "tables do a good job of showcasing what you're missing"), rows = projects/images/own-watermark/placement+templates/gallery, columns = Free ("Your plan" chip) / Pro (highlighted column + "Most popular") / Studio. Header is now **outcome-framed** ("Put your own brand on every photo you send") instead of feature-framed ("Upgrade to unlock this feature"). **Per-day price anchors** under each paid price ("about ₹33 a day" / "about ₹100 a day"). Footer: **"No commitment — cancel anytime."** plus the honest billing-period line.
+- **`UpgradeButton`**: optional `cta` prop (modal passes "Unlock Pro"/"Unlock Studio" — action-framed, not generic "Continue") and a **right chevron** on the button (the researcher's observation: most winning paywalls have it).
+- **`/pricing` page**: same per-day anchor under paid prices + "No commitment — cancel anytime" under upgrade CTAs.
+- **`ProjectWizard`**: the modal `reason` line reframed to speak to the outcome ("your logo or studio name on every proof…").
+
+**Verified in prod** (Free account `testphoto+pivot1@example.com`): clicking a Pro-locked card opens the new modal with all elements rendering correctly (screenshot taken — table, highlighted Pro column, anchors, chevron CTAs, cancel-anytime footer); `/pricing` shows the anchors and subtitles. Not adopted (noted for later consideration): multi-page paywall flow, exit-intent sheet (needs an annual/monthly split we don't have), free trials (Razorpay setup currently has none — a trial on the annual-equivalent plan would be the research-backed next experiment if conversion needs a push).
+
+---
