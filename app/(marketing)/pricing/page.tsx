@@ -48,6 +48,9 @@ export default async function PricingPage() {
                 </span>
                 {plan.priceINR && <span className="text-sm font-normal text-zinc-500">/mo</span>}
               </p>
+              {plan.priceINR && (
+                <p className="mt-0.5 text-xs text-zinc-500">about ₹{Math.round(plan.priceINR / 30)} a day</p>
+              )}
 
               <ul className="mt-5 flex-1 space-y-2.5 text-sm text-zinc-600 dark:text-zinc-400">
                 {[
@@ -83,7 +86,10 @@ export default async function PricingPage() {
                     {user ? "Go to dashboard" : "Sign up free"}
                   </Link>
                 ) : user ? (
-                  <UpgradeButton plan={tier as "PRO" | "STUDIO"} label={plan.label} />
+                  <>
+                    <UpgradeButton plan={tier as "PRO" | "STUDIO"} label={plan.label} />
+                    <p className="mt-2 text-center text-xs text-zinc-500">No commitment — cancel anytime</p>
+                  </>
                 ) : (
                   <Link
                     href="/signup"

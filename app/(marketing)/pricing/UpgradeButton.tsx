@@ -23,7 +23,7 @@ function loadRazorpayScript(): Promise<void> {
   });
 }
 
-export function UpgradeButton({ plan, label }: { plan: "PRO" | "STUDIO"; label: string }) {
+export function UpgradeButton({ plan, label, cta }: { plan: "PRO" | "STUDIO"; label: string; cta?: string }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -75,7 +75,16 @@ export function UpgradeButton({ plan, label }: { plan: "PRO" | "STUDIO"; label: 
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
         )}
-        {loading ? "Loading…" : `Upgrade to ${label}`}
+        {loading ? "Loading…" : cta ?? `Upgrade to ${label}`}
+        {!loading && (
+          <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path
+              fillRule="evenodd"
+              d="M7.21 14.77a.75.75 0 010-1.06L10.94 10 7.21 6.29a.75.75 0 111.06-1.06l4.25 4.25a.75.75 0 010 1.06l-4.25 4.25a.75.75 0 01-1.06 0z"
+              clipRule="evenodd"
+            />
+          </svg>
+        )}
       </button>
       {error && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{error}</p>}
     </div>

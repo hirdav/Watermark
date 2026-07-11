@@ -358,7 +358,7 @@ export function ProjectWizard({ projectId, allowed, templates: initialTemplates,
         open={pricingModalOpen}
         onClose={() => setPricingModalOpen(false)}
         currentPlan={allowed ? undefined : "FREE"}
-        reason="Custom watermarks — your own logo or text, full placement control, and saved templates — are available on Pro and Studio."
+        reason="That's a Pro feature — your logo or studio name on every proof, placed exactly how you want, with saved templates."
       />
 
       {/* Stepper */}
