@@ -3,7 +3,8 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { PLANS, startOfCurrentBillingPeriod } from "@/lib/plans";
+import { formatStorageLimit, PLANS, startOfCurrentBillingPeriod } from "@/lib/plans";
+import { getProjectStorageUsageBytes } from "@/lib/upload-pipeline";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { ProjectWizard } from "./ProjectWizard";
 
@@ -38,6 +39,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     planConfig.maxImagesPerMonth === Infinity
       ? 0
       : Math.min(100, Math.round((usedThisPeriod / planConfig.maxImagesPerMonth) * 100));
+
+  const storageUsedBytes = await getProjectStorageUsageBytes(project.id);
+  const storageUsedMB = storageUsedBytes / (1024 * 1024);
+  const storageCapMB = planConfig.maxStorageMBPerProject;
+  const storagePct = storageCapMB === Infinity ? 0 : Math.min(100, Math.round((storageUsedMB / storageCapMB) * 100));
+  const storageUsedLabel = storageUsedMB >= 1024 ? `${(storageUsedMB / 1024).toFixed(2)} GB` : `${storageUsedMB.toFixed(1)} MB`;
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -80,6 +87,20 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         )}
       </div>
 
+      <div className="mt-2 flex items-center gap-3">
+        <p className="shrink-0 text-sm text-zinc-500">
+          {storageUsedLabel} / {storageCapMB === Infinity ? "unlimited" : formatStorageLimit(storageCapMB)} storage used
+        </p>
+        {storageCapMB !== Infinity && (
+          <div className="h-1.5 w-full max-w-40 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
+            <div
+              className={`h-full rounded-full ${storagePct >= 90 ? "bg-red-500" : "bg-zinc-900 dark:bg-zinc-50"}`}
+              style={{ width: `${storagePct}%` }}
+            />
+          </div>
+        )}
+      </div>
+
       <ProjectWizard
         projectId={project.id}
         allowed={planConfig.customWatermark}
@@ -102,6 +123,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           id: image.id,
           filename: image.filename,
           selected: image.selected,
+          feedback: image.feedback,
         }))}
         initial={{
           type: project.watermarkType,

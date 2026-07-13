@@ -1,7 +1,7 @@
 import { nanoid } from "nanoid";
 import { prisma } from "@/lib/db";
 import type { Project, User } from "@/lib/generated/prisma/client";
-import { PLANS, startOfCurrentBillingPeriod } from "@/lib/plans";
+import { formatStorageLimit, PLANS, startOfCurrentBillingPeriod } from "@/lib/plans";
 import { originalPathFor, readFileFromStorage, saveFile, watermarkedPathFor } from "@/lib/storage";
 import { applyWatermark, type WatermarkConfig } from "@/lib/watermark";
 
@@ -18,6 +18,8 @@ export interface UploadResult {
   uploaded: number;
   skipped: number;
   error?: string;
+  /** True if some files were skipped because the project's storage cap was hit (not just unsupported extensions). */
+  storageLimitReached?: boolean;
 }
 
 /** How many more images `user` can upload this billing period. Lets callers bail out
@@ -29,6 +31,12 @@ export async function getRemainingQuota(user: User): Promise<{ remaining: number
     where: { project: { userId: user.id }, createdAt: { gte: startOfCurrentBillingPeriod() } },
   });
   return { remaining: planConfig.maxImagesPerMonth - usedThisPeriod, planLabel: planConfig.label, maxImagesPerMonth: planConfig.maxImagesPerMonth };
+}
+
+/** Total bytes (original + watermarked) already stored for a project. */
+export async function getProjectStorageUsageBytes(projectId: string): Promise<number> {
+  const { _sum } = await prisma.image.aggregate({ where: { projectId }, _sum: { sizeBytes: true } });
+  return _sum.sizeBytes ?? 0;
 }
 
 async function buildWatermarkConfig(project: Project, customWatermark: boolean): Promise<WatermarkConfig> {
@@ -95,8 +103,13 @@ export async function processImageUploads(
 
   const watermarkConfig = await buildWatermarkConfig(project, planConfig.customWatermark);
 
+  const storageCapBytes =
+    planConfig.maxStorageMBPerProject === Infinity ? Infinity : planConfig.maxStorageMBPerProject * 1024 * 1024;
+  let storageUsedBytes = storageCapBytes === Infinity ? 0 : await getProjectStorageUsageBytes(project.id);
+
   let uploaded = 0;
   let skipped = 0;
+  let stoppedForStorage = false;
 
   for (const file of incoming) {
     if (!ALLOWED_EXT.has(file.ext)) {
@@ -104,7 +117,23 @@ export async function processImageUploads(
       continue;
     }
 
+    // Rough pre-check using the original's size (the watermarked copy is
+    // rarely more than a little larger) so we can skip before doing the
+    // expensive watermarking work for files that clearly won't fit.
+    if (storageUsedBytes + file.buffer.length * 2 > storageCapBytes) {
+      stoppedForStorage = true;
+      skipped++;
+      continue;
+    }
+
     const { buffer: watermarkedBuffer } = await applyWatermark(file.buffer, watermarkConfig);
+    const sizeBytes = file.buffer.length + watermarkedBuffer.length;
+
+    if (storageUsedBytes + sizeBytes > storageCapBytes) {
+      stoppedForStorage = true;
+      skipped++;
+      continue;
+    }
 
     const storedName = `${nanoid()}${file.ext}`;
     const originalRel = originalPathFor(user.id, project.id, storedName);
@@ -119,14 +148,23 @@ export async function processImageUploads(
         filename: file.filename,
         originalPath: originalRel,
         watermarkedPath: watermarkedRel,
+        sizeBytes,
       },
     });
     uploaded++;
+    storageUsedBytes += sizeBytes;
   }
 
   if (uploaded === 0) {
+    if (stoppedForStorage) {
+      return {
+        uploaded: 0,
+        skipped,
+        error: `This project has used all ${planConfig.maxStorageMBPerProject === Infinity ? "" : formatStorageLimit(planConfig.maxStorageMBPerProject) + " "}of storage included in your ${planConfig.label} plan. Upgrade for more, or free up space by deleting photos.`,
+      };
+    }
     return { uploaded: 0, skipped, error: "No supported image files (.jpg/.jpeg/.png) were found in that selection." };
   }
 
-  return { uploaded, skipped };
+  return { uploaded, skipped, storageLimitReached: stoppedForStorage || undefined };
 }

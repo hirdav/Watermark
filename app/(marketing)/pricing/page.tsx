@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { PLANS, PlanName } from "@/lib/plans";
+import { formatStorageLimit, PLANS, PlanName } from "@/lib/plans";
 import { UpgradeButton } from "./UpgradeButton";
 
 const TIERS: PlanName[] = ["FREE", "PRO", "STUDIO"];
@@ -56,6 +56,7 @@ export default async function PricingPage() {
                 {[
                   `${plan.maxProjects === Infinity ? "Unlimited" : plan.maxProjects} active project${plan.maxProjects === 1 ? "" : "s"}`,
                   `${plan.maxImagesPerMonth === Infinity ? "Unlimited" : plan.maxImagesPerMonth} images / month`,
+                  `${formatStorageLimit(plan.maxStorageMBPerProject)} storage per project`,
                   plan.customWatermark ? "Your own logo or text watermark" : "Default watermark",
                   plan.customWatermark ? "Full placement control + saved templates" : "Fixed placement",
                   "Private client gallery with favorites",

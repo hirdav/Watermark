@@ -24,7 +24,7 @@ export default async function GalleryPage({ params }: { params: Promise<{ token:
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">{project.title}</h1>
         <GalleryGrid
           token={token}
-          images={project.images.map((image) => ({ id: image.id, selected: image.selected }))}
+          images={project.images.map((image) => ({ id: image.id, selected: image.selected, feedback: image.feedback }))}
         />
       </div>
     </div>

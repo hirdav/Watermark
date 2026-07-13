@@ -9,6 +9,7 @@ import {
   isDriveFolder,
   isSupportedDriveImage,
   listDriveFolderImages,
+  type DriveFileMeta,
 } from "@/lib/google-drive";
 import { getRemainingQuota, processImageUploads, type IncomingUpload } from "@/lib/upload-pipeline";
 
@@ -26,6 +27,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const body = await req.json().catch(() => null);
   const url = typeof body?.url === "string" ? body.url.trim() : "";
+  const fileIds: string[] = Array.isArray(body?.fileIds)
+    ? body.fileIds.filter((id: unknown): id is string => typeof id === "string")
+    : [];
   if (!url) return NextResponse.json({ error: "Paste a Google Drive file or folder link" }, { status: 400 });
 
   const driveId = extractDriveId(url);
@@ -36,17 +40,28 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   try {
     const rootMeta = await getDriveMetadata(driveId);
 
-    const targets = isDriveFolder(rootMeta)
-      ? await listDriveFolderImages(driveId)
-      : isSupportedDriveImage(rootMeta)
-        ? [rootMeta]
-        : [];
+    let targets: DriveFileMeta[];
+    if (fileIds.length > 0) {
+      // An explicit selection from the folder-browse step — re-verify each ID
+      // server-side rather than trusting the client's earlier listing.
+      const metas = await Promise.all(fileIds.map((id) => getDriveMetadata(id).catch(() => null)));
+      targets = metas.filter((meta): meta is DriveFileMeta => !!meta && isSupportedDriveImage(meta));
+    } else {
+      targets = isDriveFolder(rootMeta)
+        ? await listDriveFolderImages(driveId)
+        : isSupportedDriveImage(rootMeta)
+          ? [rootMeta]
+          : [];
+    }
 
     if (targets.length === 0) {
-      return NextResponse.json(
-        { error: isDriveFolder(rootMeta) ? "No .jpg/.png images found in that Drive folder" : "That Drive file isn't a supported image (.jpg/.png)" },
-        { status: 400 }
-      );
+      const error =
+        fileIds.length > 0
+          ? "None of the selected photos could be imported — they may have been moved or unshared."
+          : isDriveFolder(rootMeta)
+            ? "No .jpg/.png images found in that Drive folder"
+            : "That Drive file isn't a supported image (.jpg/.png)";
+      return NextResponse.json({ error }, { status: 400 });
     }
 
     const { remaining, planLabel, maxImagesPerMonth } = await getRemainingQuota(user);
@@ -56,7 +71,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           error:
             remaining <= 0
               ? `You've used all ${maxImagesPerMonth} images included in your ${planLabel} plan this month. Upgrade to upload more.`
-              : `That Drive folder has ${targets.length} image(s), but only ${remaining} more are allowed this month on your ${planLabel} plan. Upgrade for more.`,
+              : `You selected ${targets.length} image(s), but only ${remaining} more are allowed this month on your ${planLabel} plan. Upgrade for more.`,
         },
         { status: 400 }
       );

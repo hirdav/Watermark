@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile, unlink } from "fs/promises";
+import { mkdir, readFile, writeFile, unlink, rm } from "fs/promises";
 import { dirname, join, resolve } from "path";
 
 const STORAGE_DIR = resolve(process.env.STORAGE_DIR || "./storage");
@@ -31,4 +31,9 @@ export async function readFileFromStorage(relativePath: string): Promise<Buffer>
 
 export async function deleteFileFromStorage(relativePath: string): Promise<void> {
   await unlink(join(STORAGE_DIR, relativePath)).catch(() => {});
+}
+
+/** Removes every file for a project (originals, watermarked copies, logo) in one go. */
+export async function deleteProjectStorage(userId: string, projectId: string): Promise<void> {
+  await rm(join(STORAGE_DIR, userId, projectId), { recursive: true, force: true }).catch(() => {});
 }

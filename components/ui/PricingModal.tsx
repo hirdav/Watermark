@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { UpgradeButton } from "@/app/(marketing)/pricing/UpgradeButton";
+import { formatStorageLimit, PLANS } from "@/lib/plans";
 
 interface PricingModalProps {
   open: boolean;
@@ -15,8 +16,14 @@ interface PricingModalProps {
 
 /** Feature comparison — a table shows what staying on Free means giving up. */
 const ROWS: { label: string; free: string | boolean; pro: string | boolean; studio: string | boolean }[] = [
-  { label: "Active projects", free: "2", pro: "Unlimited", studio: "Unlimited" },
-  { label: "Images per month", free: "20", pro: "500", studio: "Unlimited" },
+  { label: "Active projects", free: String(PLANS.FREE.maxProjects), pro: "Unlimited", studio: "Unlimited" },
+  { label: "Images per month", free: String(PLANS.FREE.maxImagesPerMonth), pro: String(PLANS.PRO.maxImagesPerMonth), studio: "Unlimited" },
+  {
+    label: "Storage per project",
+    free: formatStorageLimit(PLANS.FREE.maxStorageMBPerProject),
+    pro: formatStorageLimit(PLANS.PRO.maxStorageMBPerProject),
+    studio: formatStorageLimit(PLANS.STUDIO.maxStorageMBPerProject),
+  },
   { label: "Your own logo or text watermark", free: false, pro: true, studio: true },
   { label: "Placement control + saved templates", free: false, pro: true, studio: true },
   { label: "Client gallery with favorites", free: true, pro: true, studio: true },

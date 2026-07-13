@@ -38,6 +38,7 @@ export interface ImageDto {
   id: string;
   filename: string;
   selected: boolean;
+  feedback: string | null;
 }
 
 interface ProjectWizardProps {
@@ -191,6 +192,9 @@ export function ProjectWizard({ projectId, allowed, templates: initialTemplates,
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [driveUrl, setDriveUrl] = useState("");
   const [importingDrive, setImportingDrive] = useState(false);
+  const [browsingDrive, setBrowsingDrive] = useState(false);
+  const [driveItems, setDriveItems] = useState<{ id: string; name: string }[] | null>(null);
+  const [selectedDriveIds, setSelectedDriveIds] = useState<Set<string>>(new Set());
 
   const hasLogoSource = !!logoFile || !!templateId || initial.hasLogo;
 
@@ -356,15 +360,14 @@ export function ProjectWizard({ projectId, allowed, templates: initialTemplates,
     }
   }
 
-  async function importFromDrive() {
-    if (!driveUrl.trim()) return;
+  async function runDriveImport(fileIds?: string[]) {
     setImportingDrive(true);
     setNotice(null);
     try {
       const res = await fetch(`/api/projects/${projectId}/import-drive`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: driveUrl.trim() }),
+        body: JSON.stringify({ url: driveUrl.trim(), ...(fileIds ? { fileIds } : {}) }),
       });
       const body = await res.json();
       if (!res.ok || body.error) {
@@ -372,6 +375,8 @@ export function ProjectWizard({ projectId, allowed, templates: initialTemplates,
         return;
       }
       setDriveUrl("");
+      setDriveItems(null);
+      setSelectedDriveIds(new Set());
       setNotice({
         kind: "ok",
         text: `Watermarked ${body.uploaded} photo(s) from Google Drive${body.skipped ? ` — skipped ${body.skipped} unsupported file(s)` : ""}.`,
@@ -381,6 +386,42 @@ export function ProjectWizard({ projectId, allowed, templates: initialTemplates,
     } finally {
       setImportingDrive(false);
     }
+  }
+
+  async function browseDrive() {
+    if (!driveUrl.trim()) return;
+    setBrowsingDrive(true);
+    setNotice(null);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/import-drive/list`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: driveUrl.trim() }),
+      });
+      const body = await res.json();
+      if (!res.ok || body.error) {
+        setNotice({ kind: "error", text: body.error ?? "Could not read that Drive link" });
+        return;
+      }
+      if (body.kind === "file") {
+        // A single-photo link has nothing to pick from — import it right away.
+        await runDriveImport();
+        return;
+      }
+      setDriveItems(body.items);
+      setSelectedDriveIds(new Set(body.items.map((item: { id: string }) => item.id)));
+    } finally {
+      setBrowsingDrive(false);
+    }
+  }
+
+  function toggleDriveId(id: string) {
+    setSelectedDriveIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   function handlePreviewClick(e: React.MouseEvent<HTMLImageElement>) {
@@ -833,19 +874,79 @@ export function ProjectWizard({ projectId, allowed, templates: initialTemplates,
               <input
                 type="url"
                 value={driveUrl}
-                onChange={(e) => setDriveUrl(e.target.value)}
+                onChange={(e) => {
+                  setDriveUrl(e.target.value);
+                  setDriveItems(null);
+                  setSelectedDriveIds(new Set());
+                }}
                 placeholder="https://drive.google.com/drive/folders/…"
                 className="min-w-0 flex-1 rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
               />
-              <button
-                type="button"
-                onClick={importFromDrive}
-                disabled={!driveUrl.trim() || importingDrive}
-                className={secondaryBtn}
-              >
-                {importingDrive ? "Importing…" : "Import"}
-              </button>
+              {driveItems === null ? (
+                <button
+                  type="button"
+                  onClick={browseDrive}
+                  disabled={!driveUrl.trim() || browsingDrive || importingDrive}
+                  className={secondaryBtn}
+                >
+                  {browsingDrive ? "Looking…" : "Browse"}
+                </button>
+              ) : (
+                <button type="button" onClick={() => setDriveItems(null)} className={secondaryBtn}>
+                  Change link
+                </button>
+              )}
             </div>
+
+            {driveItems && driveItems.length > 0 && (
+              <div className="mt-3 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 px-3 py-2 text-xs text-zinc-500 dark:border-zinc-800">
+                  <span>
+                    {driveItems.length} photo{driveItems.length === 1 ? "" : "s"} found — choose which to watermark
+                    and import
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDriveIds(new Set(driveItems.map((item) => item.id)))}
+                      className="font-medium text-zinc-900 hover:underline dark:text-zinc-50"
+                    >
+                      Select all
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDriveIds(new Set())}
+                      className="font-medium text-zinc-900 hover:underline dark:text-zinc-50"
+                    >
+                      Select none
+                    </button>
+                  </div>
+                </div>
+                <ul className="max-h-56 divide-y divide-zinc-100 overflow-y-auto text-sm dark:divide-zinc-800">
+                  {driveItems.map((item) => (
+                    <li key={item.id} className="flex items-center gap-2.5 px-3 py-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedDriveIds.has(item.id)}
+                        onChange={() => toggleDriveId(item.id)}
+                        className="h-4 w-4 shrink-0 rounded border-zinc-300 dark:border-zinc-700"
+                      />
+                      <span className="truncate text-zinc-700 dark:text-zinc-300">{item.name}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="border-t border-zinc-200 px-3 py-2.5 dark:border-zinc-800">
+                  <button
+                    type="button"
+                    onClick={() => runDriveImport(Array.from(selectedDriveIds))}
+                    disabled={selectedDriveIds.size === 0 || importingDrive}
+                    className={primaryBtn}
+                  >
+                    {importingDrive ? "Importing…" : `Watermark & import ${selectedDriveIds.size} selected →`}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="mt-5 flex flex-wrap gap-2">
@@ -926,6 +1027,11 @@ export function ProjectWizard({ projectId, allowed, templates: initialTemplates,
                 </div>
                 {image.selected && (
                   <p className="bg-amber-100 px-2 py-1.5 text-center text-xs font-medium text-amber-800">★ Client favorite</p>
+                )}
+                {image.feedback && (
+                  <p className="border-t border-zinc-100 px-2.5 py-1.5 text-xs text-zinc-600 dark:border-zinc-800 dark:text-zinc-400">
+                    💬 {image.feedback}
+                  </p>
                 )}
               </div>
             ))}

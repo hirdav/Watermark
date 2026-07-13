@@ -6,14 +6,38 @@ import { PhotoViewer, type PhotoViewerItem } from "@/components/ui/PhotoViewer";
 interface GalleryImage {
   id: string;
   selected: boolean;
+  feedback: string | null;
 }
 
 export function GalleryGrid({ token, images: initialImages }: { token: string; images: GalleryImage[] }) {
   const [images, setImages] = useState(initialImages);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const [poppingId, setPoppingId] = useState<string | null>(null);
+  const [feedbackDrafts, setFeedbackDrafts] = useState<Record<string, string>>({});
+  const [savingFeedbackId, setSavingFeedbackId] = useState<string | null>(null);
+  const [savedFeedbackId, setSavedFeedbackId] = useState<string | null>(null);
 
   const favoriteCount = images.filter((i) => i.selected).length;
+
+  async function submitFeedback(id: string, draft: string) {
+    const feedback = draft.trim();
+    setSavingFeedbackId(id);
+    try {
+      const res = await fetch(`/api/gallery/${token}/feedback`, {
+        method: "POST",
+        body: new URLSearchParams({ imageId: id, feedback }),
+      });
+      if (!res.ok) throw new Error("request failed");
+      const body = await res.json();
+      setImages((prev) => prev.map((img) => (img.id === id ? { ...img, feedback: body.feedback } : img)));
+      setSavedFeedbackId(id);
+      setTimeout(() => setSavedFeedbackId((cur) => (cur === id ? null : cur)), 1800);
+    } catch {
+      // Leave the draft in place so the client can retry.
+    } finally {
+      setSavingFeedbackId(null);
+    }
+  }
 
   async function toggleFavorite(id: string) {
     // Optimistic update — flip immediately, reconcile with the server in the background.
@@ -102,6 +126,29 @@ export function GalleryGrid({ token, images: initialImages }: { token: string; i
                 {image.selected ? "★ Favorited" : "☆ Favorite"}
               </span>
             </button>
+            <div className="border-t border-zinc-100 px-3 py-2.5 dark:border-zinc-800">
+              <textarea
+                value={feedbackDrafts[image.id] ?? image.feedback ?? ""}
+                onChange={(e) => setFeedbackDrafts((prev) => ({ ...prev, [image.id]: e.target.value }))}
+                placeholder="Leave feedback on this photo…"
+                rows={2}
+                maxLength={500}
+                className="w-full resize-none rounded-md border border-zinc-200 bg-white px-2.5 py-1.5 text-xs text-zinc-700 outline-none placeholder:text-zinc-400 focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+              />
+              <div className="mt-1.5 flex items-center justify-between gap-2">
+                <span className="text-[11px] text-green-600 dark:text-green-500">
+                  {savedFeedbackId === image.id ? "Saved ✓" : ""}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => submitFeedback(image.id, feedbackDrafts[image.id] ?? image.feedback ?? "")}
+                  disabled={savingFeedbackId === image.id}
+                  className="shrink-0 rounded-md bg-zinc-900 px-2.5 py-1 text-[11px] font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
+                >
+                  {savingFeedbackId === image.id ? "Saving…" : "Send feedback"}
+                </button>
+              </div>
+            </div>
           </div>
         ))}
       </div>

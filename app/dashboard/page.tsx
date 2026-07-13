@@ -2,8 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { PLANS } from "@/lib/plans";
+import { formatStorageLimit, PLANS } from "@/lib/plans";
 import { Banner } from "@/components/ui/Banner";
+import { DeleteProjectButton } from "@/components/ui/DeleteProjectButton";
 
 export default async function DashboardPage({
   searchParams,
@@ -22,6 +23,15 @@ export default async function DashboardPage({
     orderBy: { createdAt: "desc" },
     include: { _count: { select: { images: true } } },
   });
+
+  const storageByProject = await prisma.image.groupBy({
+    by: ["projectId"],
+    where: { projectId: { in: projects.map((p) => p.id) } },
+    _sum: { sizeBytes: true },
+  });
+  const storageMBByProjectId = new Map(
+    storageByProject.map((row) => [row.projectId, (row._sum.sizeBytes ?? 0) / (1024 * 1024)])
+  );
 
   async function createProjectAction(formData: FormData) {
     "use server";
@@ -86,21 +96,30 @@ export default async function DashboardPage({
 
       <ul className="mt-8 flex flex-col gap-2.5">
         {projects.map((project) => (
-          <li key={project.id}>
-            <Link
-              href={`/dashboard/projects/${project.id}`}
-              className="group flex items-center justify-between gap-4 rounded-xl border border-zinc-200 bg-white px-5 py-4 transition-all hover:border-zinc-300 hover:shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
-            >
-              <div className="min-w-0">
-                <p className="truncate font-medium text-zinc-900 dark:text-zinc-50">{project.title}</p>
-                <p className="mt-0.5 text-sm text-zinc-500">
-                  {project._count.images} photo{project._count.images === 1 ? "" : "s"}
-                </p>
-              </div>
-              <span className="shrink-0 text-sm font-medium text-zinc-400 transition-colors group-hover:text-zinc-900">
-                Open →
-              </span>
+          <li
+            key={project.id}
+            className="group flex items-center justify-between gap-4 rounded-xl border border-zinc-200 bg-white px-5 py-4 transition-all hover:border-zinc-300 hover:shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
+          >
+            <Link href={`/dashboard/projects/${project.id}`} className="min-w-0 flex-1">
+              <p className="truncate font-medium text-zinc-900 dark:text-zinc-50">{project.title}</p>
+              <p className="mt-0.5 text-sm text-zinc-500">
+                {project._count.images} photo{project._count.images === 1 ? "" : "s"}
+                {" · "}
+                {((storageMBByProjectId.get(project.id) ?? 0) >= 1024
+                  ? `${((storageMBByProjectId.get(project.id) ?? 0) / 1024).toFixed(2)} GB`
+                  : `${(storageMBByProjectId.get(project.id) ?? 0).toFixed(1)} MB`)}
+                {planConfig.maxStorageMBPerProject !== Infinity && ` / ${formatStorageLimit(planConfig.maxStorageMBPerProject)}`}
+              </p>
             </Link>
+            <div className="flex shrink-0 items-center gap-1">
+              <Link
+                href={`/dashboard/projects/${project.id}`}
+                className="text-sm font-medium text-zinc-400 transition-colors group-hover:text-zinc-900 dark:group-hover:text-zinc-100"
+              >
+                Open →
+              </Link>
+              <DeleteProjectButton projectId={project.id} projectTitle={project.title} />
+            </div>
           </li>
         ))}
         {projects.length === 0 && (
