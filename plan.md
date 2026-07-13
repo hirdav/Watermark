@@ -375,3 +375,13 @@ All limiters return a 429 with a `Retry-After` header (API routes) or redirect t
 **Verified**: `tsc`, `lint`, and `npm run build` all pass.
 
 ---
+
+## 2026-07-14 — Rewrote the homepage Use Cases section with real case studies
+
+User supplied full case-study copy for four scenarios (photography client proofing, UI/UX design reviews, social-media/thumbnail creators, freelancers & agencies), each with a problem paragraph, a one-line friction summary, and how Proof resolves it — considerably deeper than the previous section's five one-line audience tags (Photographers/Designers/Content creators/Businesses/Agencies).
+
+Rebuilt `app/(marketing)/_sections/UseCases.tsx` as a 2-column grid of case-study cards (title → problem paragraph → italicized friction line → a checkmark-prefixed solution paragraph, reusing the same green check path already used in `Features`/`PricingModal` for visual consistency) instead of trying to compress this copy into the old compact-card format. Copy used verbatim from the user, only trimming nothing — content is exactly as supplied.
+
+**Verified locally**: `tsc`/`lint` clean; dev server confirmed via `get_page_text` and the accessibility tree that all four case studies render in the correct order with correct heading/paragraph structure. The `Claude_Preview` screenshot tool was flaky again this session (solid-black captures despite `window.scrollY` confirming the page really had scrolled to the section) — a previously-documented issue with this specific tool, not a rendering bug; text-based verification stood in for it.
+
+---
