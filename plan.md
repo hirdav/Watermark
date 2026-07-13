@@ -340,3 +340,18 @@ Two brand assets the user dropped in the working tree (`app/new favicon.svg`, `a
 **Verified locally** (dev server, since the homepage/pricing/auth chrome don't touch the DB): wordmark renders legibly in both dark mode (white-on-dark header) and light mode (dark-on-light header) via `currentColor`; `curl` confirmed `/icon.svg` responds `200 image/svg+xml` and the page's `<head>` contains the generated `<link rel="icon" href="/icon.svg?...">` tag.
 
 ---
+
+## 2026-07-13 (night) — Waitlist gate on Pro/Studio upgrades
+
+Free-plan users hitting an upgrade CTA now see a waitlist form instead of Razorpay checkout — a deliberate pause on paid upgrades to measure real demand (email required, phone and Instagram optional) before turning payments back on.
+
+- **Explicitly did not touch the Razorpay flow.** `UpgradeButton` (`app/(marketing)/pricing/UpgradeButton.tsx`) gained one new optional prop, `onIntercept?: () => boolean` — if it returns `true`, `handleClick` returns immediately before any of the existing checkout code runs. Every other code path in that file is untouched, so a caller that doesn't pass `onIntercept` behaves exactly as before.
+- **`WaitlistEntry` model** (new, additive migration): `email`, optional `phone`/`instagram`, `plan` (PRO or STUDIO — which tier they wanted), optional `userId` (`onDelete: SetNull`, so deleting a user doesn't lose the interest data). Public `POST /api/waitlist` validates email format and a valid plan, attaches the signed-in `userId` if there is one.
+- **`WaitlistModal`** (`components/ui/WaitlistModal.tsx`): email/phone/Instagram form → success state ("You're on the list!"). Reused in two places via the new `onIntercept` hook:
+  - `PricingModal` (the locked-feature modal in `ProjectWizard`) — gated whenever `currentPlan === "FREE"`, which is the only value it's ever actually opened with today, but written so a hypothetical future Pro-user invocation would correctly fall through to real checkout instead.
+  - `/pricing` page — a new `TierAction` client wrapper (page.tsx is a Server Component) gates on `user.plan === "FREE"`; a signed-in Pro user looking at the Studio tier still gets real checkout, per the literal scope of the request ("a user on the Free plan").
+- Scope decision worth recording: the existing `PricingModal` comparison table (built during the conversion-research pass) stays exactly as designed — only the terminal "Unlock Pro"/"Unlock Studio" button action changes for Free users. Considered and rejected: skipping straight to the waitlist form the moment a locked feature is clicked, without showing the pricing/comparison info first — kept the informative step since the goal is to capture *genuinely* interested signups, not just clicks.
+
+**Verified**: `tsc`, `lint`, and a full `npm run build` all pass (new `/api/waitlist` route compiles). Logged-out `/pricing` render confirmed locally (no regressions — Free/Pro/Studio cards, storage lines, and CTAs all intact). The gated flow itself needs a real logged-in Free-plan session to click through, which this environment's local DB can't provide (per the established pattern) — **verification of the actual waitlist modal appearing on click, form submission, and the `WaitlistEntry` row being created is still pending a pass against production** after this deploys.
+
+---

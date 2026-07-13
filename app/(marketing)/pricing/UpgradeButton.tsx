@@ -23,11 +23,21 @@ function loadRazorpayScript(): Promise<void> {
   });
 }
 
-export function UpgradeButton({ plan, label, cta }: { plan: "PRO" | "STUDIO"; label: string; cta?: string }) {
+interface UpgradeButtonProps {
+  plan: "PRO" | "STUDIO";
+  label: string;
+  cta?: string;
+  /** If provided and it returns true, the checkout flow is skipped entirely — used to
+   * redirect Free-plan users into the waitlist instead of real Razorpay checkout. */
+  onIntercept?: () => boolean;
+}
+
+export function UpgradeButton({ plan, label, cta, onIntercept }: UpgradeButtonProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleClick() {
+    if (onIntercept?.()) return;
     setLoading(true);
     setError(null);
     try {

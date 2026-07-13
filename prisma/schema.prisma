@@ -52,6 +52,7 @@ model User {
   subscription       Subscription?
   watermarkTemplates WatermarkTemplate[]
   passwordResetTokens PasswordResetToken[]
+  waitlistEntries    WaitlistEntry[]
   createdAt          DateTime      @default(now())
 }
 
@@ -129,4 +130,19 @@ model Image {
   selected        Boolean  @default(false)
   feedback        String?
   createdAt       DateTime @default(now())
+}
+
+/** Captures interest from Free-plan users who hit a Pro/Studio upgrade
+ * prompt while paid upgrades are gated behind a waitlist. */
+model WaitlistEntry {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  email     String
+  phone     String?
+  instagram String?
+  plan      Plan
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }

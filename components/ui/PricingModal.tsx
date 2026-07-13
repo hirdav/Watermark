@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { UpgradeButton } from "@/app/(marketing)/pricing/UpgradeButton";
+import { WaitlistModal } from "@/components/ui/WaitlistModal";
 import { formatStorageLimit, PLANS } from "@/lib/plans";
 
 interface PricingModalProps {
@@ -45,6 +46,12 @@ function Cell({ value }: { value: string | boolean }) {
 }
 
 export function PricingModal({ open, onClose, currentPlan, reason }: PricingModalProps) {
+  const [waitlistPlan, setWaitlistPlan] = useState<{ plan: "PRO" | "STUDIO"; label: string } | null>(null);
+  // Paid upgrades are gated behind a waitlist for Free-plan users while we measure
+  // genuine demand — the Razorpay checkout flow in UpgradeButton is untouched and
+  // still runs normally for anyone not on Free.
+  const gated = currentPlan === "FREE";
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -141,14 +148,38 @@ export function PricingModal({ open, onClose, currentPlan, reason }: PricingModa
                   {currentPlan === "PRO" ? (
                     <span className="block text-center text-xs text-zinc-400">Current plan</span>
                   ) : (
-                    <UpgradeButton plan="PRO" label="Pro" cta="Unlock Pro" />
+                    <UpgradeButton
+                      plan="PRO"
+                      label="Pro"
+                      cta="Unlock Pro"
+                      onIntercept={
+                        gated
+                          ? () => {
+                              setWaitlistPlan({ plan: "PRO", label: "Pro" });
+                              return true;
+                            }
+                          : undefined
+                      }
+                    />
                   )}
                 </td>
                 <td className="px-3 pt-4 align-top">
                   {currentPlan === "STUDIO" ? (
                     <span className="block text-center text-xs text-zinc-400">Current plan</span>
                   ) : (
-                    <UpgradeButton plan="STUDIO" label="Studio" cta="Unlock Studio" />
+                    <UpgradeButton
+                      plan="STUDIO"
+                      label="Studio"
+                      cta="Unlock Studio"
+                      onIntercept={
+                        gated
+                          ? () => {
+                              setWaitlistPlan({ plan: "STUDIO", label: "Studio" });
+                              return true;
+                            }
+                          : undefined
+                      }
+                    />
                   )}
                 </td>
               </tr>
@@ -166,6 +197,13 @@ export function PricingModal({ open, onClose, currentPlan, reason }: PricingModa
           </Link>
         </p>
       </div>
+
+      <WaitlistModal
+        open={!!waitlistPlan}
+        onClose={() => setWaitlistPlan(null)}
+        plan={waitlistPlan?.plan ?? "PRO"}
+        planLabel={waitlistPlan?.label ?? "Pro"}
+      />
     </div>
   );
 }

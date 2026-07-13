@@ -2,7 +2,7 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatStorageLimit, PLANS, PlanName } from "@/lib/plans";
-import { UpgradeButton } from "./UpgradeButton";
+import { TierAction } from "./TierAction";
 
 const TIERS: PlanName[] = ["FREE", "PRO", "STUDIO"];
 
@@ -88,7 +88,7 @@ export default async function PricingPage() {
                   </Link>
                 ) : user ? (
                   <>
-                    <UpgradeButton plan={tier as "PRO" | "STUDIO"} label={plan.label} />
+                    <TierAction plan={tier as "PRO" | "STUDIO"} label={plan.label} gated={user.plan === "FREE"} />
                     <p className="mt-2 text-center text-xs text-zinc-500">No commitment — cancel anytime</p>
                   </>
                 ) : (
