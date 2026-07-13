@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { extname } from "path";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { processImageUploads, type IncomingUpload } from "@/lib/upload-pipeline";
 
 function respond(req: Request, projectId: string, params: Record<string, string>) {
@@ -18,6 +19,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id: projectId } = await params;
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { allowed, retryAfterSeconds } = rateLimit(`upload:${session.user.id}`, 10, 60 * 1000);
+  if (!allowed) return rateLimitResponse(retryAfterSeconds);
 
   const project = await prisma.project.findUnique({ where: { id: projectId } });
   if (!project || project.userId !== session.user.id) {

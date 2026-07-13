@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getClientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(req: Request) {
+  const { allowed, retryAfterSeconds } = rateLimit(`waitlist:${getClientIp(req.headers)}`, 5, 10 * 60 * 1000);
+  if (!allowed) return rateLimitResponse(retryAfterSeconds);
+
   const body = await req.json().catch(() => null);
   const email = typeof body?.email === "string" ? body.email.trim() : "";
   const phone = typeof body?.phone === "string" ? body.phone.trim() : "";

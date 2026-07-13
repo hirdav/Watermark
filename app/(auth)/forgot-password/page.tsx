@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { createPasswordResetToken } from "@/lib/password-reset";
 import { passwordResetEmail, sendMail } from "@/lib/mail";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { SubmitButton } from "@/components/auth/SubmitButton";
 import { FormMessage } from "@/components/auth/FormMessage";
 
@@ -16,13 +17,19 @@ export default async function ForgotPasswordPage({
 
   async function requestResetAction(formData: FormData) {
     "use server";
+    const h = await headers();
+    const ip = getClientIp(h);
+    const { allowed } = rateLimit(`forgot-password:${ip}`, 5, 60 * 60 * 1000);
+    // Fail the same way as "sent" on rate-limit — never reveal timing/limit
+    // details that could help someone probe which emails have accounts.
+    if (!allowed) redirect("/forgot-password?sent=1");
+
     const email = (formData.get("email") as string)?.trim().toLowerCase();
     if (!email) redirect("/forgot-password");
 
     const user = await prisma.user.findUnique({ where: { email } });
     if (user) {
       const token = await createPasswordResetToken(user.id);
-      const h = await headers();
       const host = h.get("x-forwarded-host") ?? h.get("host");
       const proto = h.get("x-forwarded-proto") ?? "https";
       const resetUrl = `${proto}://${host}/reset-password/${token}`;

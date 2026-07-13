@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getClientIp, rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 const MAX_FEEDBACK_LENGTH = 500;
 
 export async function POST(req: Request, { params }: { params: Promise<{ token: string }> }) {
+  const { allowed, retryAfterSeconds } = rateLimit(`gallery-feedback:${getClientIp(req.headers)}`, 15, 60 * 1000);
+  if (!allowed) return rateLimitResponse(retryAfterSeconds);
+
   const { token } = await params;
   const form = await req.formData();
   const imageId = form.get("imageId");

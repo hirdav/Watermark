@@ -7,6 +7,7 @@ import { readFileFromStorage } from "@/lib/storage";
 import { applyWatermark } from "@/lib/watermark";
 import { parseWatermarkFields } from "@/lib/watermark-form";
 import { resolveLogoBuffer } from "@/lib/watermark-logo";
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 async function sampleBaseImage(projectId: string): Promise<Buffer> {
   const image = await prisma.image.findFirst({ where: { projectId }, orderBy: { createdAt: "desc" } });
@@ -24,6 +25,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id: projectId } = await params;
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { allowed, retryAfterSeconds } = rateLimit(`watermark-preview:${session.user.id}`, 60, 60 * 1000);
+  if (!allowed) return rateLimitResponse(retryAfterSeconds);
 
   const project = await prisma.project.findUnique({ where: { id: projectId } });
   if (!project || project.userId !== session.user.id) {

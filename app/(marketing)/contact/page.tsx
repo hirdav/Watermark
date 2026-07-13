@@ -1,5 +1,7 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { sendMail } from "@/lib/mail";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { SubmitButton } from "@/components/auth/SubmitButton";
 import { FormMessage } from "@/components/auth/FormMessage";
 
@@ -14,6 +16,10 @@ export default async function ContactPage({
 
   async function sendContactAction(formData: FormData) {
     "use server";
+    const ip = getClientIp(await headers());
+    const { allowed } = rateLimit(`contact:${ip}`, 5, 60 * 60 * 1000);
+    if (!allowed) redirect("/contact?error=rate-limited");
+
     const name = (formData.get("name") as string)?.trim();
     const email = (formData.get("email") as string)?.trim();
     const message = (formData.get("message") as string)?.trim();
@@ -48,10 +54,14 @@ export default async function ContactPage({
         </div>
       ) : (
         <form action={sendContactAction} className="mt-8 flex flex-col gap-4">
-          {error && (
-            <FormMessage kind="error">
-              Something went wrong sending your message. Please try again in a moment.
-            </FormMessage>
+          {error === "rate-limited" ? (
+            <FormMessage kind="error">Too many messages sent. Please wait a while and try again.</FormMessage>
+          ) : (
+            error && (
+              <FormMessage kind="error">
+                Something went wrong sending your message. Please try again in a moment.
+              </FormMessage>
+            )
           )}
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">

@@ -358,3 +358,20 @@ Free-plan users hitting an upgrade CTA now see a waitlist form instead of Razorp
 - Confirmed via network-request inspection on both flows: **zero** requests to `razorpay` or `/api/billing/checkout` fired — the payment code path was never reached, as intended.
 
 ---
+
+## 2026-07-13 (very late) — Basic rate limiting
+
+User asked whether anything protects the server from being hammered/crashed — audit found **zero** rate limiting anywhere (no `middleware.ts`, no rate-limit package, nothing beyond the plan-based image/storage quotas, which cap a legit account's usage but do nothing against raw request volume or unauthenticated abuse).
+
+Added `lib/rate-limit.ts`: an in-memory fixed-window limiter (`Map<key, {count, resetAt}>`, opportunistic cleanup every 5 min). Deliberately no Redis — this runs as a single Railway container, so an in-memory map is sufficient today; noted in the file's own comment that it resets on every restart/redeploy and won't be shared if this ever scales to multiple instances. `getClientIp()` reads `x-forwarded-for` (Railway sits behind a proxy, same header already trusted elsewhere in this codebase via `trustHost`). Wired into every public or expensive endpoint, keyed by user ID where authenticated and by IP otherwise:
+
+- **Public, unauthenticated** (spam/abuse risk): `POST /api/waitlist` (5/10min), `POST /api/gallery/[token]/select` (60/min — generous, real clients click favorites repeatedly), `POST /api/gallery/[token]/feedback` (15/min), and the Server Actions behind `/login` (10/10min), `/signup` (5/hour), `/forgot-password` (5/hour — fails through to the same generic "sent" redirect on rate-limit, so it can't be used to distinguish rate-limited from a real send and leak account existence), `/contact` (5/hour).
+- **Authenticated, CPU/IO-heavy** (crash risk — `sharp` watermarking runs synchronously on a single Node process, no queue): `POST /api/projects/[id]/upload` (10/min), `import-drive` and `import-drive/list` (10/min and 15/min), `watermark-preview` (60/min — already client-debounced at 350ms, this is just a hard ceiling).
+- **Payment-adjacent**: `POST /api/billing/checkout` (5/min) — stops scripted Razorpay-subscription-creation spam.
+- Deliberately left un-limited: authenticated CRUD on a user's own resources with no external side effects (project/template/image delete, downloads) — already bounded by plan quotas and ownership checks, not a meaningful abuse surface.
+
+All limiters return a 429 with a `Retry-After` header (API routes) or redirect to the existing error-banner UI with a new `error=rate-limited` case (Server Action forms) — no new UI components needed, just one more branch in each page's existing `FormMessage` block.
+
+**Verified**: `tsc`, `lint`, and `npm run build` all pass.
+
+---

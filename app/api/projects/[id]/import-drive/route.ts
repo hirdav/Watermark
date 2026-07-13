@@ -11,12 +11,16 @@ import {
   listDriveFolderImages,
   type DriveFileMeta,
 } from "@/lib/google-drive";
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { getRemainingQuota, processImageUploads, type IncomingUpload } from "@/lib/upload-pipeline";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: projectId } = await params;
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { allowed, retryAfterSeconds } = rateLimit(`import-drive:${session.user.id}`, 10, 60 * 1000);
+  if (!allowed) return rateLimitResponse(retryAfterSeconds);
 
   const project = await prisma.project.findUnique({ where: { id: projectId } });
   if (!project || project.userId !== session.user.id) {

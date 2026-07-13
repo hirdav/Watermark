@@ -1,7 +1,9 @@
 import { AuthError } from "next-auth";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { signIn } from "@/lib/auth";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { PasswordField } from "@/components/auth/PasswordField";
 import { SubmitButton } from "@/components/auth/SubmitButton";
 import { FormMessage } from "@/components/auth/FormMessage";
@@ -20,6 +22,12 @@ export default async function LoginPage({
     const email = formData.get("email");
     const password = formData.get("password");
     const target = (formData.get("callbackUrl") as string) || "/dashboard";
+
+    const ip = getClientIp(await headers());
+    const { allowed } = rateLimit(`login:${ip}`, 10, 10 * 60 * 1000);
+    if (!allowed) {
+      redirect(`/login?error=rate-limited&callbackUrl=${encodeURIComponent(target)}`);
+    }
 
     try {
       await signIn("credentials", { email, password, redirectTo: target });
@@ -41,7 +49,11 @@ export default async function LoginPage({
           <input type="hidden" name="callbackUrl" value={redirectTo} />
 
           {reset === "success" && <FormMessage kind="success">Password updated — log in with your new password.</FormMessage>}
-          {error && <FormMessage kind="error">Invalid email or password. Please try again.</FormMessage>}
+          {error === "rate-limited" ? (
+            <FormMessage kind="error">Too many login attempts. Please wait a few minutes and try again.</FormMessage>
+          ) : (
+            error && <FormMessage kind="error">Invalid email or password. Please try again.</FormMessage>
+          )}
 
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">

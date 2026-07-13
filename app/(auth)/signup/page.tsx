@@ -1,9 +1,11 @@
 import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { signIn } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { PasswordField } from "@/components/auth/PasswordField";
 import { SubmitButton } from "@/components/auth/SubmitButton";
 import { FormMessage } from "@/components/auth/FormMessage";
@@ -18,6 +20,10 @@ export default async function SignupPage({
 
   async function signupAction(formData: FormData) {
     "use server";
+    const ip = getClientIp(await headers());
+    const { allowed } = rateLimit(`signup:${ip}`, 5, 60 * 60 * 1000);
+    if (!allowed) redirect("/signup?error=rate-limited");
+
     const email = (formData.get("email") as string)?.trim().toLowerCase();
     const password = formData.get("password") as string;
     const name = (formData.get("name") as string)?.trim() || undefined;
@@ -61,6 +67,9 @@ export default async function SignupPage({
           )}
           {error === "invalid-email" && <FormMessage kind="error">Please enter a valid email address.</FormMessage>}
           {error === "invalid-password" && <FormMessage kind="error">Password must be at least 8 characters.</FormMessage>}
+          {error === "rate-limited" && (
+            <FormMessage kind="error">Too many signup attempts. Please wait a while and try again.</FormMessage>
+          )}
 
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">

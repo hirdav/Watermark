@@ -3,10 +3,14 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PLANS, PlanName } from "@/lib/plans";
 import { getRazorpayClient } from "@/lib/razorpay";
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { allowed, retryAfterSeconds } = rateLimit(`checkout:${session.user.id}`, 5, 60 * 1000);
+  if (!allowed) return rateLimitResponse(retryAfterSeconds);
 
   const body = await req.json().catch(() => null);
   const plan = body?.plan as PlanName | undefined;
