@@ -385,3 +385,16 @@ Rebuilt `app/(marketing)/_sections/UseCases.tsx` as a 2-column grid of case-stud
 **Verified locally**: `tsc`/`lint` clean; dev server confirmed via `get_page_text` and the accessibility tree that all four case studies render in the correct order with correct heading/paragraph structure. The `Claude_Preview` screenshot tool was flaky again this session (solid-black captures despite `window.scrollY` confirming the page really had scrolled to the section) — a previously-documented issue with this specific tool, not a rendering bug; text-based verification stood in for it.
 
 ---
+
+## 2026-07-14 (later) — Admin viewer for waitlist entries
+
+User asked where a submitted waitlist form actually lands — answer at the time was "nowhere visible, only the `WaitlistEntry` table" — so added a minimal admin view rather than requiring a direct DB query every time.
+
+- `lib/admin.ts`: `isAdminEmail()` checks the signed-in email against a comma-separated `ADMIN_EMAILS` env var. No new `User.isAdmin` column/migration — env-var gating matches this project's existing pattern for single-owner config (`CONTACT_EMAIL`, `GOOGLE_API_KEY`, etc.) and needs zero schema change.
+- `/dashboard/admin/waitlist` (nested under the existing dashboard layout, so it gets the same header/nav for free): table of all `WaitlistEntry` rows (email, plan wanted, phone, Instagram, whether the submitter already has an account, submitted date), newest first. `notFound()` (not a redirect) for a logged-in non-admin, so the route's existence isn't revealed.
+- `GET /api/admin/waitlist/export`: same admin check, streams a CSV download (same fields) via `Content-Disposition: attachment`.
+- Dashboard nav gained a "Waitlist" link, shown only when `isAdminEmail()` is true — invisible to every normal account.
+
+**Not yet usable in prod**: `ADMIN_EMAILS` isn't set on Railway yet, so the page 404s for everyone including the owner until that's added — this is a manual step for the user (set it to whichever email they log in with), documented in `.env.example`. Verified locally instead: `tsc`, `lint`, `npm run build` all pass and both new routes (`/dashboard/admin/waitlist`, `/api/admin/waitlist/export`) compile.
+
+---
