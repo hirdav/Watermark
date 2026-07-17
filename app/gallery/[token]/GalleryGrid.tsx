@@ -68,16 +68,26 @@ export function GalleryGrid({ token, images: initialImages }: { token: string; i
 
   return (
     <>
-      <p className="mt-1.5 text-sm text-zinc-500">
-        Tap a photo to view it, or use the favorite button to shortlist it
-        {favoriteCount > 0 && (
-          <>
-            {" "}
-            — <span className="font-medium text-amber-600 dark:text-amber-500">{favoriteCount} favorited</span>
-          </>
+      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-zinc-500">
+          Tap a photo to view it, or use the favorite button to shortlist it
+          {favoriteCount > 0 && (
+            <>
+              {" "}
+              — <span className="font-medium text-amber-600 dark:text-amber-500">{favoriteCount} favorited</span>
+            </>
+          )}
+          .
+        </p>
+        {images.length > 0 && (
+          <a
+            href={`/api/gallery/${token}/download`}
+            className="shrink-0 rounded-lg bg-zinc-900 px-3.5 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            {favoriteCount > 0 ? `Download ${favoriteCount} favorited` : "Download all"}
+          </a>
         )}
-        .
-      </p>
+      </div>
 
       <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
         {images.map((image, i) => (

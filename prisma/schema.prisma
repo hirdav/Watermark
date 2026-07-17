@@ -85,6 +85,10 @@ model Project {
   user               User              @relation(fields: [userId], references: [id])
   title              String
   shareToken         String            @unique @default(cuid())
+  clientName         String?
+  welcomeMessage     String?
+  studioName         String?
+  studioLogoPath     String?
   watermarkType      WatermarkType     @default(TEXT)
   watermarkText      String            @default("PROOF")
   watermarkLogoPath  String?

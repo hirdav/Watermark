@@ -7,6 +7,7 @@ import { formatStorageLimit, PLANS, startOfCurrentBillingPeriod } from "@/lib/pl
 import { getProjectStorageUsageBytes } from "@/lib/upload-pipeline";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { ProjectWizard } from "./ProjectWizard";
+import { GallerySettingsForm } from "./GallerySettingsForm";
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -72,6 +73,17 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           Open ↗
         </Link>
       </div>
+
+      <GallerySettingsForm
+        projectId={project.id}
+        shareToken={project.shareToken}
+        initial={{
+          clientName: project.clientName ?? "",
+          welcomeMessage: project.welcomeMessage ?? "",
+          studioName: project.studioName ?? "",
+          hasStudioLogo: !!project.studioLogoPath,
+        }}
+      />
 
       <div className="mt-4 flex items-center gap-3">
         <p className="shrink-0 text-sm text-zinc-500">
