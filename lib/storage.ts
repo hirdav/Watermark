@@ -15,6 +15,10 @@ export function logoPathFor(userId: string, projectId: string): string {
   return join(userId, projectId, "watermark-logo.png");
 }
 
+export function studioLogoPathFor(userId: string, projectId: string): string {
+  return join(userId, projectId, "studio-logo.png");
+}
+
 export function templateLogoPathFor(userId: string, templateId: string): string {
   return join(userId, "templates", `${templateId}.png`);
 }
