@@ -83,3 +83,4 @@ of silently failing.
 Defined in `lib/plans.ts`: Free (2 projects, 20 images/mo total, fixed watermark text), Pro (500
 images/mo, custom watermark text), Studio (unlimited). Enforced in
 `lib/upload-pipeline.ts`, shared by both the local-file and Google Drive upload routes.
+#planning to move with Supabase 
